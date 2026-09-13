@@ -2,9 +2,12 @@ import { ROSTER } from '../data/roster.js';
 import { ARENAS } from '../data/arenas.js';
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct=v=>`${Math.max(0,Math.min(100,v))}%`;
 
 export class ExtraModes{
-  constructor(ui){this.ui=ui;this.root=ui.root;this.observer=new MutationObserver(()=>this.sync());this.observer.observe(this.root,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});this.sync();}
+  constructor(ui){this.ui=ui;this.root=ui.root;this.installHudHook();this.observer=new MutationObserver(()=>this.sync());this.observer.observe(this.root,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});this.sync();}
+  installHudHook(){const original=this.ui.game.hooks.onHud;this.ui.game.hooks.onHud=m=>{original?.(m);this.onHud(m)}}
+  onHud(match){if(match?.config?.mode!=='chaos'||match.fighters.length<3)return;let shell=this.root.querySelector('#chaos-hud');if(!shell){shell=document.createElement('div');shell.id='chaos-hud';shell.className='chaos-hud';this.root.querySelector('#hud')?.appendChild(shell)}if(!shell)return;const extras=match.fighters.slice(2);shell.innerHTML=extras.map((f,i)=>`<div class="chaos-chip ${f.ko?'ko':''}"><div class="chaos-name">P${i+3} • ${esc(f.def.shortName)}</div><div class="chaos-bar"><i style="width:${pct(f.physical)}"></i><b style="width:${pct(f.consciousness)}"></b></div><span>${f.ko?'KO':f.state}</span></div>`).join('')}
   sync(){if(this.root.classList.contains('menu'))this.injectMenu()}
   injectMenu(){const stack=this.root.querySelector('.menu-stack');if(!stack||stack.querySelector('[data-extra-mode]'))return;
     const credits=stack.querySelector('[data-nav="credits"]');const wrap=document.createDocumentFragment();
