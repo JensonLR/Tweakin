@@ -1,8 +1,8 @@
 import { THREE } from '../vendor/three.js';
-import { ROSTER, getFighterDef } from '../data/roster.js';
+import { getFighterDef } from '../data/roster.js';
 import { getArenaDef } from '../data/arenas.js';
-import { Arena } from './Arena.js';
-import { Fighter } from './Fighter.js';
+import { DetailedArena } from './DetailedArena.js';
+import { DetailedFighter } from './DetailedFighter.js';
 import { FighterAI } from './AI.js';
 import { EMPTY_INPUT } from '../core/types.js';
 import { clamp } from '../core/math.js';
@@ -10,13 +10,13 @@ import { clamp } from '../core/math.js';
 export class CombatMatch {
   constructor(config,audio,hooks={}){
     this.config=config;this.audio=audio;this.hooks=hooks;this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x080809);this.scene.fog=new THREE.FogExp2(getArenaDef(config.arenaId).fog,.035);
-    this.arena=new Arena(getArenaDef(config.arenaId));this.scene.add(this.arena.group);this.fighters=[];this.ais=[];this.elapsed=0;this.remaining=config.roundSeconds??180;this.frame=0;this.finished=false;this.winner=null;this.cameraShake=0;this.hitStop=0;this.cinematic=null;this.cinematicTime=0;this.messageCooldown=0;this.spawnFighters();
+    this.arena=new DetailedArena(getArenaDef(config.arenaId));this.scene.add(this.arena.group);this.fighters=[];this.ais=[];this.elapsed=0;this.remaining=config.roundSeconds??180;this.frame=0;this.finished=false;this.winner=null;this.cameraShake=0;this.hitStop=0;this.cinematic=null;this.cinematicTime=0;this.messageCooldown=0;this.spawnFighters();
   }
   spawnFighters(){
     const ids=this.config.fighters?.length?this.config.fighters:['trump','gigachad'];
     const count=Math.min(ids.length,4);const s=this.arena.def.size*.2;
     for(let i=0;i<count;i++){
-      const f=new Fighter(getFighterDef(ids[i]),i);const ang=count===2?(i===0?Math.PI:-Math.PI*.02):(i/count*Math.PI*2);f.group.position.set(Math.sin(ang)*s,0,Math.cos(ang)*s);f.yaw=i===0?0:Math.PI;f.group.rotation.y=f.yaw;
+      const f=new DetailedFighter(getFighterDef(ids[i]),i);const ang=count===2?(i===0?Math.PI:-Math.PI*.02):(i/count*Math.PI*2);f.group.position.set(Math.sin(ang)*s,0,Math.cos(ang)*s);f.yaw=i===0?0:Math.PI;f.group.rotation.y=f.yaw;
       const ov=this.config.fighterOverrides?.[i];if(ov?.stats)f.def={...f.def,stats:{...f.def.stats,...ov.stats}};if(ov?.styles)f.def={...f.def,styles:[...ov.styles]};this.fighters.push(f);this.scene.add(f.group);
       const human=this.config.humanSlots?.includes(i);this.ais[i]=human?null:new FighterAI(clamp(this.config.aiDifficulty??.62,.05,1),`${this.config.arenaId}-${f.def.id}-${i}`)
     }
@@ -43,8 +43,9 @@ export class CombatMatch {
     const facing=Math.cos(Math.atan2(dx,dz)-a.yaw);if(facing<-.15)return;a.markConnected();
     const ux=dx/(d||1),uz=dz/(d||1);let kind=ev.type,raw=a.attackDamage(kind);if(a.heldWeapon&&kind!=='grapple'&&kind!=='special'){kind='weapon';raw*=1.32}
     const result=t.receiveHit(raw,kind,a,ux,uz);this.cameraShake=Math.max(this.cameraShake,kind==='special'?.95:kind==='heavy'||kind==='weapon'?.55:.26);this.hitStop=kind==='special'?.085:kind==='heavy'||kind==='grapple'?.045:.022;
+    this.hooks.onImpact?.(new THREE.Vector3(t.group.position.x,1.45,t.group.position.z),kind,result.blocked,a,t);
     this.audio.impact?.(kind,result.blocked);if(result.blocked)this.emit('BLOCKED');else if(result.ko)this.emit('KNOCKOUT');else if(kind==='special'){const fin=a.def.finishers[0];this.emit(fin.name.toUpperCase());this.cinematic=[a,t];this.cinematicTime=1.25;this.hooks.onSpecial?.(a,fin.name)}else if(a.combo>2)this.emit(`${a.combo} HIT COMBO`);
-    const wall=this.arena.environmentAnchor(t.group.position.x,t.group.position.z);if(wall&&(kind==='heavy'||kind==='grapple'||kind==='special')){const extra=t.receiveHit(8+raw*.18,'environment',a,ux,uz);this.arena.hitBreakable(wall.x,wall.z,kind==='special'?2:1);this.cameraShake=Math.max(this.cameraShake,.75);this.audio.environment?.();if(extra.ko)this.emit('ENVIRONMENT KNOCKOUT')}
+    const wall=this.arena.environmentAnchor(t.group.position.x,t.group.position.z);if(wall&&(kind==='heavy'||kind==='grapple'||kind==='special')){const extra=t.receiveHit(8+raw*.18,'environment',a,ux,uz);this.arena.hitBreakable(wall.x,wall.z,kind==='special'?2:1);this.cameraShake=Math.max(this.cameraShake,.75);this.audio.environment?.();this.hooks.onImpact?.(new THREE.Vector3(wall.x,1.2,wall.z),'environment',false,a,t);if(extra.ko)this.emit('ENVIRONMENT KNOCKOUT')}
     if(a.heldWeapon&&kind==='weapon'&&Math.random()<.22){a.setWeaponVisual(null);this.emit('WEAPON BROKEN')}
   }
   resolveHazards(){
