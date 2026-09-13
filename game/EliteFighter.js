@@ -2,6 +2,7 @@ import { THREE } from '../vendor/three.js';
 import { UltraFighter } from './UltraFighter.js';
 import { addFaceDetail } from './FaceDetail.js';
 import { addCharacterDetail } from './CharacterDetail.js';
+import { CombatWear } from './CombatWear.js';
 
 const DUR={light:.34,heavy:.62,grapple:.72,special:2.35};
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
@@ -10,7 +11,7 @@ export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;this.signatureStep=0;
-    addFaceDetail(this);addCharacterDetail(this);
+    addFaceDetail(this);addCharacterDetail(this);this.combatWear=new CombatWear(this);
   }
   setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting)this.signatureStep=(this.signatureStep+1)%4}
   update(dt,input,target,arena){
@@ -19,7 +20,7 @@ export class EliteFighter extends UltraFighter{
     if(this.state==='Attack'){const next=input.grapple?'grapple':input.heavy?'heavy':input.light?'light':'';if(next){this.buffered=next;this.bufferTime=.42}}
     if(this.state!=='Attack'&&this.buffered&&this.bufferTime>0&&this.canAct()){input={...input,[this.buffered]:true};this.buffered='';this.bufferTime=0}
     const axis=Math.hypot(input.x||0,input.y||0);if(input.block&&input.run&&axis>.45&&this.evadeCooldown<=0&&this.canAct()&&this.state!=='Attack'){const side=Math.abs(input.x)>.2?Math.sign(input.x):((this.slot%2)?-1:1);this.group.position.x+=Math.cos(this.yaw)*side*.62;this.group.position.z+=-Math.sin(this.yaw)*side*.62;this.evadeTime=.26;this.invuln=.16;this.evadeCooldown=.72;this.justEvaded=true;input={...input,block:false,run:false,x:0,y:0}}
-    return super.update(dt,input,target,arena);
+    const ev=super.update(dt,input,target,arena);this.combatWear?.update();return ev;
   }
   tryDefense(kind,attacker){if(this.invuln>0)return{evaded:true};if(this.parryWindow>0&&kind!=='grapple'&&kind!=='special'&&kind!=='environment'){this.parryWindow=0;this.momentum=Math.min(100,this.momentum+12);if(attacker&&!attacker.ko)attacker.setState('Stun');return{parried:true}}return null}
   disposeWeapon(){if(!this.weaponVisual)return;this.rightFore.remove(this.weaponVisual);this.weaponVisual.traverse?.(o=>{o.geometry?.dispose?.();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>m.dispose?.())}});this.weaponVisual=null}
@@ -65,5 +66,5 @@ export class EliteFighter extends UltraFighter{
     if(this.weaponVisual&&this.state==='Attack'){const p=Math.min(1,this.stateTime/(this.attackType==='heavy'?.62:.34));this.weaponVisual.rotation.x=-Math.sin(p*Math.PI)*.24}
   }
   snapshot(){return{...super.snapshot(),heldWeapon:this.heldWeapon,combo:this.combo,comboClock:this.comboClock,parryWindow:this.parryWindow,evadeTime:this.evadeTime,signatureStep:this.signatureStep}}
-  applySnapshot(s){super.applySnapshot(s);this.combo=s.combo??this.combo;this.comboClock=s.comboClock??this.comboClock;this.parryWindow=s.parryWindow??0;this.evadeTime=s.evadeTime??0;this.signatureStep=s.signatureStep??this.signatureStep;if((s.heldWeapon??null)!==this.heldWeapon)this.setWeaponVisual(s.heldWeapon??null)}
+  applySnapshot(s){super.applySnapshot(s);this.combo=s.combo??this.combo;this.comboClock=s.comboClock??this.comboClock;this.parryWindow=s.parryWindow??0;this.evadeTime=s.evadeTime??0;this.signatureStep=s.signatureStep??this.signatureStep;if((s.heldWeapon??null)!==this.heldWeapon)this.setWeaponVisual(s.heldWeapon??null);this.combatWear?.update()}
 }
