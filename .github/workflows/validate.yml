@@ -27,7 +27,7 @@ jobs:
             index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css sw.js manifest.webmanifest icon.svg \
             game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js \
             game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js \
-            game/CharacterDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js \
+            game/CharacterDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js \
             game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
             ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js \
             data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js vendor/three.js
@@ -91,7 +91,7 @@ jobs:
           const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           const missing=local.filter(x=>!fs.existsSync(x));
           if(missing.length){console.error('Missing cached files:',missing);process.exit(1)}
-          for(const required of ['game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/CinematicCombatMatch.js','game/VenueArena.js']){
+          for(const required of ['game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js']){
             if(!local.includes(required)){console.error('Required runtime missing from offline cache:',required);process.exit(1)}
           }
           console.log(`Offline cache manifest validates ${local.length} local assets.`);
@@ -120,6 +120,7 @@ jobs:
           if(!sig.includes('FacialAnimator')) throw new Error('Facial animator not wired');
           if(!sig.includes('triggerFinisherReaction')) throw new Error('Finisher reaction choreography missing');
           if(!game.includes('triggerSlowmo')) throw new Error('Impact slow motion missing');
+          if(!game.includes('ArenaAtmosphere')) throw new Error('Arena atmosphere not wired');
           if(!face.includes('nextBlink')) throw new Error('Facial blink controller missing');
           console.log('Presentation stack is wired.');
           NODE
