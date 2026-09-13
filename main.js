@@ -1,6 +1,10 @@
 import { Game } from './game/Game.js';
 import { AppUI } from './ui/AppUI.js';
+import { installUIEnhancements } from './ui/Enhancements.js';
 import { SaveStore, DEFAULT_SETTINGS } from './persistence/SaveStore.js';
+
+installUIEnhancements(AppUI);
+
 async function boot() {
     const host = document.querySelector('#render-host');
     const root = document.querySelector('#ui-root');
