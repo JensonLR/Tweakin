@@ -1,10 +1,7 @@
 import { Game } from './game/Game.js';
 import { AppUI } from './ui/AppUI.js';
-import { installUIEnhancements } from './ui/Enhancements.js';
+import { UIShowcase } from './ui/UIShowcase.js';
 import { SaveStore, DEFAULT_SETTINGS } from './persistence/SaveStore.js';
-
-installUIEnhancements(AppUI);
-
 async function boot() {
     const host = document.querySelector('#render-host');
     const root = document.querySelector('#ui-root');
@@ -19,6 +16,7 @@ async function boot() {
     const game = new Game(host, settings);
     const ui = new AppUI(root, game, store);
     await ui.init();
+    window.__TWEAKIN_SHOWCASE__ = new UIShowcase(root, game);
 }
 boot().catch((err) => {
     console.error(err);
