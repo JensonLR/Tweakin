@@ -24,12 +24,12 @@ jobs:
         run: |
           set -e
           for f in \
-            index.html main.js style.css style-premium.css style-cinematic.css sw.js manifest.webmanifest icon.svg \
+            index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css sw.js manifest.webmanifest icon.svg \
             game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js \
-            game/UltraFighter.js game/EliteFighter.js game/FaceDetail.js game/Arena.js game/DetailedArena.js \
-            game/UltraArena.js game/VenueArena.js game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js \
-            game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
-            ui/AppUI.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js \
+            game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js \
+            game/CharacterDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js \
+            game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
+            ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js \
             data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js vendor/three.js
           do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
@@ -91,7 +91,7 @@ jobs:
           const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           const missing=local.filter(x=>!fs.existsSync(x));
           if(missing.length){console.error('Missing cached files:',missing);process.exit(1)}
-          for(const required of ['game/EliteFighter.js','game/FaceDetail.js','game/CinematicCombatMatch.js','game/VenueArena.js']){
+          for(const required of ['game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/CinematicCombatMatch.js','game/VenueArena.js']){
             if(!local.includes(required)){console.error('Required runtime missing from offline cache:',required);process.exit(1)}
           }
           console.log(`Offline cache manifest validates ${local.length} local assets.`);
@@ -108,4 +108,18 @@ jobs:
           const arenaCount=(arenas.match(/\bid:\s*'/g)||[]).length;
           if(arenaCount<12) throw new Error(`Expected at least 12 arenas, found ${arenaCount}`);
           console.log(`Roster and ${arenaCount} arenas present.`);
+          NODE
+
+      - name: Validate presentation stack
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const sig=fs.readFileSync('game/SignatureFighter.js','utf8');
+          const game=fs.readFileSync('game/Game.js','utf8');
+          const face=fs.readFileSync('game/FacialAnimator.js','utf8');
+          if(!sig.includes('FacialAnimator')) throw new Error('Facial animator not wired');
+          if(!sig.includes('triggerFinisherReaction')) throw new Error('Finisher reaction choreography missing');
+          if(!game.includes('triggerSlowmo')) throw new Error('Impact slow motion missing');
+          if(!face.includes('nextBlink')) throw new Error('Facial blink controller missing');
+          console.log('Presentation stack is wired.');
           NODE
