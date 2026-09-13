@@ -5,7 +5,10 @@ function mat(color,rough=.58,metal=.04,emissive=0x000000,emissiveIntensity=0){re
 function mesh(parent,geo,material,pos=[0,0,0],rot=[0,0,0],scale=[1,1,1]){const m=new THREE.Mesh(geo,material);m.position.set(...pos);m.rotation.set(...rot);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
 
 export class DetailedFighter extends Fighter{
-  constructor(def,slot){super(def,slot);this.detailMeshes=[];this.addIdentityLayer();this.addSurfaceLayer();this.animSeed=Math.random()*10;}
+  constructor(def,slot){
+    super(def,slot);this.detailMeshes=[];this.addIdentityLayer();this.addSurfaceLayer();this.animSeed=Math.random()*10;this.restScale=new THREE.Vector3(1,1,1);
+    this.visualMaterials=[];const seen=new Set();this.group.traverse(o=>{if(!o.isMesh||!o.material)return;const list=Array.isArray(o.material)?o.material:[o.material];for(const m of list){if(!m?.color||seen.has(m))continue;seen.add(m);this.visualMaterials.push({m,base:m.color.clone(),rough:m.roughness??.6,metal:m.metalness??0});}});
+  }
   add(parent,geo,material,pos,rot,scale){const m=mesh(parent,geo,material,pos,rot,scale);this.detailMeshes.push(m);return m;}
   addIdentityLayer(){
     const d=this.def,id=d.id, skin=mat(d.palette.skin,.72), dark=mat(0x171418,.72), metal=mat(0x8c8f94,.28,.72), accent=mat(d.palette.accent,.42,.18), cloth=mat(d.palette.primary,.7,.03);
@@ -41,15 +44,28 @@ export class DetailedFighter extends Fighter{
     const c=this.def.palette.secondary, panel=mat(c,.83,.02);for(let i=0;i<3;i++)this.add(this.torso,new THREE.BoxGeometry(.16,.055,.025),panel,[0,.39-i*.11,.39]);
     const sole=mat(0x111113,.88,.01);[this.leftShin,this.rightShin].forEach(p=>this.add(p,new THREE.BoxGeometry(.30,.045,.48),sole,[0,-.73,.12]));
   }
+  stance(t){
+    const styles=this.def.styles||[],bounce=Math.sin(t*6.2);
+    if(styles.includes('Kickboxing')){this.leftArm.rotation.x=-1.02;this.rightArm.rotation.x=-1.15;this.leftFore.rotation.x=-.72;this.rightFore.rotation.x=-.62;this.leftLeg.rotation.x=bounce*.035;this.rightLeg.rotation.x=-bounce*.035;this.torso.rotation.x=.035;}
+    else if(styles.includes('Martial Arts')){this.leftArm.rotation.x=-.78;this.rightArm.rotation.x=-.52;this.leftFore.rotation.z=-.30;this.rightFore.rotation.z=.26;this.torso.rotation.z=Math.sin(t*1.5)*.018;}
+    else if(styles.includes('Wrestling')){this.leftArm.rotation.x=-.46;this.rightArm.rotation.x=-.46;this.leftFore.rotation.z=-.18;this.rightFore.rotation.z=.18;this.leftLeg.rotation.z=.08;this.rightLeg.rotation.z=-.08;this.torso.rotation.x=.10;}
+    else{this.leftArm.rotation.x=-.31+Math.sin(t*1.9)*.035;this.rightArm.rotation.x=-.38-Math.sin(t*1.7)*.035;this.leftFore.rotation.z=-.10;this.rightFore.rotation.z=.10;this.torso.rotation.z=Math.sin(t*.9)*.012;}
+  }
+  updateDamageLook(){
+    const damage=THREE.MathUtils.clamp(1-(this.physical+this.consciousness)/200,0,1),flash=this.hitFlash;
+    for(const v of this.visualMaterials){const m=v.m;if(!m?.color)continue;const target=v.base.clone();
+      if(this.def.id==='greek'){target.multiplyScalar(1-damage*.18);m.roughness=Math.min(1,v.rough+damage*.1);}
+      else{target.multiplyScalar(1-damage*.13);if(v.metal<.15&&damage>.18){const bruise=new THREE.Color(0x6c3940);target.lerp(bruise,damage*.11);}m.roughness=Math.min(1,v.rough+damage*.06);}
+      if(flash>0)target.lerp(new THREE.Color(0xffffff),Math.min(.45,flash*.28));m.color.lerp(target,.22);
+    }
+  }
   animate(dt,input){
-    super.animate(dt,input);
-    const t=performance.now()/1000+this.animSeed;
+    super.animate(dt,input);const t=performance.now()/1000+this.animSeed;
     if(this.state==='Neutral'||this.state==='Block'){
-      const breath=Math.sin(t*2.15)*.012;this.torso.scale.y=1+breath;this.torso.scale.x=1-breath*.45;this.head.rotation.z=Math.sin(t*1.1)*.018;
-      this.head.rotation.x=Math.sin(t*.8+this.slot)*.012;
-    }else{this.torso.scale.lerp(new THREE.Vector3(1,1,1),Math.min(1,dt*10));}
+      const breath=Math.sin(t*2.15)*.012;this.torso.scale.y=1+breath;this.torso.scale.x=1-breath*.45;this.head.rotation.z=Math.sin(t*1.1)*.018;this.head.rotation.x=Math.sin(t*.8+this.slot)*.012;if(this.state==='Neutral')this.stance(t);
+    }else{this.torso.scale.lerp(this.restScale,Math.min(1,dt*10));}
     if(this.state==='Stun'){this.head.rotation.z=Math.sin(this.stateTime*34)*.11*(1-Math.min(1,this.stateTime/.28));}
     if(this.state==='Victory'){this.leftArm.rotation.z=-.42+Math.sin(t*3)*.08;this.rightArm.rotation.z=.42-Math.sin(t*3)*.08;this.torso.rotation.y=Math.sin(t*1.5)*.08;}
-    const glow=this.specialTime>0?.65+.35*Math.sin(t*9):0;this.detailMeshes.forEach(m=>{if(m.material?.emissive&&this.def.id==='agarthan')m.material.emissiveIntensity=Math.max(m.material.emissiveIntensity||0,glow*1.4);});
+    const glow=this.specialTime>0?.65+.35*Math.sin(t*9):0;this.detailMeshes.forEach(m=>{if(m.material?.emissive&&this.def.id==='agarthan')m.material.emissiveIntensity=Math.max(m.material.emissiveIntensity||0,glow*1.4);});this.updateDamageLook();
   }
 }
