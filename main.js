@@ -1,6 +1,7 @@
 import { Game } from './game/Game.js';
 import { AppUI } from './ui/AppUI.js';
 import { UIShowcase } from './ui/UIShowcase.js';
+import { ExtraModes } from './ui/ExtraModes.js';
 import { SaveStore, DEFAULT_SETTINGS } from './persistence/SaveStore.js';
 async function boot() {
     const host = document.querySelector('#render-host');
@@ -17,6 +18,7 @@ async function boot() {
     const ui = new AppUI(root, game, store);
     await ui.init();
     window.__TWEAKIN_SHOWCASE__ = new UIShowcase(root, game);
+    window.__TWEAKIN_EXTRA_MODES__ = new ExtraModes(ui);
 }
 boot().catch((err) => {
     console.error(err);
