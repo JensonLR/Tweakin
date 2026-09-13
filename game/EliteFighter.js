@@ -1,12 +1,14 @@
 import { THREE } from '../vendor/three.js';
 import { UltraFighter } from './UltraFighter.js';
 import { addFaceDetail } from './FaceDetail.js';
+import { addCharacterDetail } from './CharacterDetail.js';
 
 export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;
     addFaceDetail(this);
+    addCharacterDetail(this);
   }
   update(dt,input,target,arena){
     this.bufferTime=Math.max(0,this.bufferTime-dt);this.parryWindow=Math.max(0,this.parryWindow-dt);this.evadeTime=Math.max(0,this.evadeTime-dt);this.evadeCooldown=Math.max(0,this.evadeCooldown-dt);this.invuln=Math.max(0,this.invuln-dt);this.justEvaded=false;
