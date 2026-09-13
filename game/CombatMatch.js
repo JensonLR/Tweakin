@@ -1,8 +1,8 @@
 import { THREE } from '../vendor/three.js';
 import { getFighterDef } from '../data/roster.js';
 import { getArenaDef } from '../data/arenas.js';
-import { DetailedArena } from './DetailedArena.js';
-import { DetailedFighter } from './DetailedFighter.js';
+import { UltraArena } from './UltraArena.js';
+import { UltraFighter } from './UltraFighter.js';
 import { FighterAI } from './AI.js';
 import { EMPTY_INPUT } from '../core/types.js';
 import { clamp } from '../core/math.js';
@@ -10,13 +10,13 @@ import { clamp } from '../core/math.js';
 export class CombatMatch {
   constructor(config,audio,hooks={}){
     this.config=config;this.audio=audio;this.hooks=hooks;this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x080809);this.scene.fog=new THREE.FogExp2(getArenaDef(config.arenaId).fog,.035);
-    this.arena=new DetailedArena(getArenaDef(config.arenaId));this.scene.add(this.arena.group);this.fighters=[];this.ais=[];this.elapsed=0;this.remaining=config.roundSeconds??180;this.frame=0;this.finished=false;this.winner=null;this.cameraShake=0;this.hitStop=0;this.cinematic=null;this.cinematicTime=0;this.messageCooldown=0;this.spawnFighters();
+    this.arena=new UltraArena(getArenaDef(config.arenaId));this.scene.add(this.arena.group);this.fighters=[];this.ais=[];this.elapsed=0;this.remaining=config.roundSeconds??180;this.frame=0;this.finished=false;this.winner=null;this.cameraShake=0;this.hitStop=0;this.cinematic=null;this.cinematicTime=0;this.messageCooldown=0;this.spawnFighters();
   }
   spawnFighters(){
     const ids=this.config.fighters?.length?this.config.fighters:['trump','gigachad'];
     const count=Math.min(ids.length,4);const s=this.arena.def.size*.2;
     for(let i=0;i<count;i++){
-      const f=new DetailedFighter(getFighterDef(ids[i]),i);const ang=count===2?(i===0?Math.PI:-Math.PI*.02):(i/count*Math.PI*2);f.group.position.set(Math.sin(ang)*s,0,Math.cos(ang)*s);f.yaw=i===0?0:Math.PI;f.group.rotation.y=f.yaw;
+      const f=new UltraFighter(getFighterDef(ids[i]),i);const ang=count===2?(i===0?Math.PI:-Math.PI*.02):(i/count*Math.PI*2);f.group.position.set(Math.sin(ang)*s,0,Math.cos(ang)*s);f.yaw=i===0?0:Math.PI;f.group.rotation.y=f.yaw;
       const ov=this.config.fighterOverrides?.[i];if(ov?.stats)f.def={...f.def,stats:{...f.def.stats,...ov.stats}};if(ov?.styles)f.def={...f.def,styles:[...ov.styles]};this.fighters.push(f);this.scene.add(f.group);
       const human=this.config.humanSlots?.includes(i);this.ais[i]=human?null:new FighterAI(clamp(this.config.aiDifficulty??.62,.05,1),`${this.config.arenaId}-${f.def.id}-${i}`)
     }
