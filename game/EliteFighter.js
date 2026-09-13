@@ -3,6 +3,7 @@ import { UltraFighter } from './UltraFighter.js';
 import { addFaceDetail } from './FaceDetail.js';
 import { addCharacterDetail } from './CharacterDetail.js';
 import { CombatWear } from './CombatWear.js';
+import { applyFighterSurface } from './SurfaceDetail.js';
 
 const DUR={light:.34,heavy:.62,grapple:.72,special:2.35};
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
@@ -11,7 +12,7 @@ export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;this.signatureStep=0;
-    addFaceDetail(this);addCharacterDetail(this);this.combatWear=new CombatWear(this);
+    addFaceDetail(this);addCharacterDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);
   }
   setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting)this.signatureStep=(this.signatureStep+1)%4}
   update(dt,input,target,arena){
@@ -36,25 +37,17 @@ export class EliteFighter extends UltraFighter{
     if(this.state!=='Attack'||!DUR[this.attackType]||this.attackType==='special')return;
     const p=Math.min(1,this.stateTime/DUR[this.attackType]),b=bell(p),id=this.def.id,side=this.attackSide||1;
     if(id==='kirk'||id==='agarthan'){
-      if(this.attackType==='heavy'||(this.attackType==='light'&&this.signatureStep%2===0)){
-        const leg=side>0?this.rightLeg:this.leftLeg,shin=side>0?this.rightShin:this.leftShin;
-        leg.rotation.x-=b*(id==='agarthan'?1.55:1.35);leg.rotation.z+=side*b*(id==='agarthan'?.38:.24);shin.rotation.x+=b*.62;this.torso.rotation.y-=side*b*.34;this.torso.rotation.x+=b*.09;
-      }else{this.torso.rotation.y+=side*b*.22;this.leftArm.rotation.z-=side*b*.14;}
+      if(this.attackType==='heavy'||(this.attackType==='light'&&this.signatureStep%2===0)){const leg=side>0?this.rightLeg:this.leftLeg,shin=side>0?this.rightShin:this.leftShin;leg.rotation.x-=b*(id==='agarthan'?1.55:1.35);leg.rotation.z+=side*b*(id==='agarthan'?.38:.24);shin.rotation.x+=b*.62;this.torso.rotation.y-=side*b*.34;this.torso.rotation.x+=b*.09;}else{this.torso.rotation.y+=side*b*.22;this.leftArm.rotation.z-=side*b*.14;}
     }else if(id==='trump'){
-      if(this.attackType==='heavy'){this.torso.rotation.y+=side*b*.74;this.rightArm.rotation.z+=side*b*.55;this.rightFore.rotation.x-=b*.65;this.head.rotation.y-=side*b*.16;}
-      if(this.attackType==='grapple'){this.leftArm.rotation.z-=b*.48;this.rightArm.rotation.z+=b*.48;this.torso.rotation.x+=b*.16;}
+      if(this.attackType==='heavy'){this.torso.rotation.y+=side*b*.74;this.rightArm.rotation.z+=side*b*.55;this.rightFore.rotation.x-=b*.65;this.head.rotation.y-=side*b*.16;}if(this.attackType==='grapple'){this.leftArm.rotation.z-=b*.48;this.rightArm.rotation.z+=b*.48;this.torso.rotation.x+=b*.16;}
     }else if(id==='netanyahu'){
-      if(this.attackType==='light'){this.torso.rotation.y+=side*b*.28;this.rightFore.rotation.z+=side*b*.32;this.rightArm.rotation.x-=b*.30;}
-      if(this.attackType==='heavy'){this.torso.rotation.y-=side*b*.48;this.leftArm.rotation.x-=b*.42;this.rightArm.rotation.x-=b*.82;this.group.position.y-=b*.018;}
+      if(this.attackType==='light'){this.torso.rotation.y+=side*b*.28;this.rightFore.rotation.z+=side*b*.32;this.rightArm.rotation.x-=b*.30;}if(this.attackType==='heavy'){this.torso.rotation.y-=side*b*.48;this.leftArm.rotation.x-=b*.42;this.rightArm.rotation.x-=b*.82;this.group.position.y-=b*.018;}
     }else if(id==='floyd'){
-      if(this.attackType==='grapple'){this.torso.rotation.x+=b*.24;this.leftArm.rotation.x-=b*.84;this.rightArm.rotation.x-=b*.84;this.leftLeg.rotation.x+=b*.18;this.rightLeg.rotation.x+=b*.18;}
-      if(this.attackType==='heavy'){this.torso.rotation.y+=side*b*.50;this.rightFore.rotation.x-=b*.56;this.group.position.y-=b*.025;}
+      if(this.attackType==='grapple'){this.torso.rotation.x+=b*.24;this.leftArm.rotation.x-=b*.84;this.rightArm.rotation.x-=b*.84;this.leftLeg.rotation.x+=b*.18;this.rightLeg.rotation.x+=b*.18;}if(this.attackType==='heavy'){this.torso.rotation.y+=side*b*.50;this.rightFore.rotation.x-=b*.56;this.group.position.y-=b*.025;}
     }else if(id==='gigachad'){
-      if(this.attackType==='heavy'){this.torso.rotation.x-=b*.18;this.torso.rotation.y+=side*b*.42;this.rightArm.rotation.x-=b*.74;this.rightFore.rotation.x-=b*.42;this.leftArm.rotation.x-=b*.22;}
-      if(this.attackType==='grapple'){this.leftArm.rotation.z-=b*.58;this.rightArm.rotation.z+=b*.58;this.torso.rotation.x+=b*.20;}
+      if(this.attackType==='heavy'){this.torso.rotation.x-=b*.18;this.torso.rotation.y+=side*b*.42;this.rightArm.rotation.x-=b*.74;this.rightFore.rotation.x-=b*.42;this.leftArm.rotation.x-=b*.22;}if(this.attackType==='grapple'){this.leftArm.rotation.z-=b*.58;this.rightArm.rotation.z+=b*.58;this.torso.rotation.x+=b*.20;}
     }else if(id==='greek'){
-      if(this.attackType==='heavy'){this.torso.rotation.x-=b*.14;this.rightArm.rotation.x-=b*.95;this.leftArm.rotation.x-=b*.45;this.rightFore.rotation.x-=b*.48;this.group.position.y-=b*.035;}
-      if(this.attackType==='grapple'){this.torso.rotation.y+=side*b*.28;this.leftArm.rotation.z-=b*.52;this.rightArm.rotation.z+=b*.52;}
+      if(this.attackType==='heavy'){this.torso.rotation.x-=b*.14;this.rightArm.rotation.x-=b*.95;this.leftArm.rotation.x-=b*.45;this.rightFore.rotation.x-=b*.48;this.group.position.y-=b*.035;}if(this.attackType==='grapple'){this.torso.rotation.y+=side*b*.28;this.leftArm.rotation.z-=b*.52;this.rightArm.rotation.z+=b*.52;}
     }else if(id==='wojak'){
       this.head.rotation.z+=Math.sin(p*Math.PI*4)*b*.09;this.torso.rotation.y+=Math.sin(p*Math.PI*2)*b*.31;this.leftArm.rotation.z+=Math.sin(p*Math.PI*3)*b*.26;
     }
