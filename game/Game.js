@@ -4,6 +4,7 @@ import { InputManager } from './Input.js';
 import { CombatMatch } from './CombatMatch.js';
 import { PresentationDirector } from './PresentationDirector.js';
 import { MenuBackdrop } from './MenuBackdrop.js';
+import { DOMFX } from './DOMFX.js';
 import { AudioEngine } from '../audio/AudioEngine.js';
 export class Game {
     renderer;
@@ -13,6 +14,7 @@ export class Game {
     match = null;
     presentation = null;
     menuBackdrop = null;
+    domfx = null;
     settings;
     net = null;
     running = true;
@@ -36,16 +38,16 @@ export class Game {
         this.renderer.setSize(innerWidth, innerHeight);this.renderer.shadowMap.enabled = settings.quality !== 'low';this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;this.renderer.outputColorSpace = THREE.SRGBColorSpace;this.renderer.toneMapping = THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure = 1.06;
         host.innerHTML = '';host.appendChild(this.renderer.domElement);
         this.camera = new THREE.PerspectiveCamera(44, innerWidth / innerHeight, .06, 100);this.camera.position.set(0, 5.4, 8);
-        this.presentation = new PresentationDirector(this.renderer,this.camera,this.mobile);this.menuBackdrop=new MenuBackdrop();
+        this.presentation = new PresentationDirector(this.renderer,this.camera,this.mobile);this.menuBackdrop=new MenuBackdrop();this.domfx=new DOMFX();
         addEventListener('resize', () => this.resize());addEventListener('error', e => this.errors.push(String(e.message)));this.audio.setVolumes(settings.masterVolume, settings.musicVolume, settings.sfxVolume);this.loop();
     }
     setHooks(h) { this.hooks = h; }
     start(config) {
         this.presentation?.dispose();this.match?.dispose();
-        this.match = new CombatMatch(config, this.audio, {onMessage: (t, d) => this.hooks.onMessage?.(t, d),onKO: () => {},onEnd: () => this.hooks.onEnd?.(this.match),onSpecial: (f, n) => this.hooks.onSpecial?.(f.def.name, n),onImpact: (pos,kind,blocked,a,t)=>this.presentation?.impact(pos,kind,blocked,a,t)});
-        this.presentation?.attach(this.match);this.audio.startMusic();this.acc = 0;this.pause = false;this.renderer.domElement.focus?.();
+        this.match = new CombatMatch(config, this.audio, {onMessage: (t, d) => this.hooks.onMessage?.(t, d),onKO: () => {},onEnd: () => this.hooks.onEnd?.(this.match),onSpecial: (f, n) => this.hooks.onSpecial?.(f.def.name, n),onImpact: (pos,kind,blocked,a,t)=>{this.presentation?.impact(pos,kind,blocked,a,t);this.domfx?.hit(kind,blocked)}});
+        this.presentation?.attach(this.match);this.domfx?.intro(this.match);this.audio.startMusic();this.acc = 0;this.pause = false;this.renderer.domElement.focus?.();
     }
-    stop() { this.presentation?.dispose(); this.match?.dispose(); this.match = null; this.audio.stopMusic(); }
+    stop() { this.presentation?.dispose(); this.match?.dispose(); this.match = null; this.domfx?.clear(); this.audio.stopMusic(); }
     setPaused(v) { this.pause = v; }
     setNetwork(net) { this.net = net; }
     loop = () => {
