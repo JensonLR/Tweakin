@@ -1,0 +1,94 @@
+name: Browser QA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve game
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/tweakin-http.log 2>&1 &
+          echo $! > /tmp/tweakin-http.pid
+          for i in {1..20}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep .5; done
+          cat /tmp/tweakin-http.log
+          exit 1
+
+      - name: Run mobile and desktop browser smoke tests
+        run: |
+          mkdir -p qa-artifacts
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const assert = (v,m)=>{ if(!v) throw new Error(m); };
+          (async()=>{
+            const browser = await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+            const browserErrors=[];
+            const mobile = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+            const page = await mobile.newPage();
+            page.on('pageerror',e=>browserErrors.push(`mobile pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error')browserErrors.push(`mobile console: ${m.text()}`)});
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
+            await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__,null,{timeout:30000});
+            assert(await page.locator('[data-nav="quick"]').isVisible(),'Quick Fight not visible on mobile');
+            assert(await page.locator('.brand-word').isVisible(),'Brand mark not visible on mobile');
+            await page.screenshot({path:'qa-artifacts/mobile-menu.png',fullPage:true});
+            await page.locator('[data-nav="quick"]').click();
+            await page.waitForFunction(()=>window.__TWEAKIN_GAME__?.match?.fighters?.length>=2,null,{timeout:15000});
+            await page.waitForTimeout(1700);
+            const mdbg=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
+            assert(mdbg.mode==='quick','Quick fight did not start');
+            assert(mdbg.fighters.length===2,'Expected two fighters');
+            assert(Number.isFinite(mdbg.fps)&&mdbg.fps>0,'FPS debug invalid');
+            await page.screenshot({path:'qa-artifacts/mobile-fight.png',fullPage:true});
+            await mobile.close();
+
+            const desktop = await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
+            const dpage = await desktop.newPage();
+            dpage.on('pageerror',e=>browserErrors.push(`desktop pageerror: ${e.message}`));
+            dpage.on('console',m=>{if(m.type()==='error')browserErrors.push(`desktop console: ${m.text()}`)});
+            await dpage.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
+            await dpage.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_SHOWCASE__,null,{timeout:30000});
+            await dpage.screenshot({path:'qa-artifacts/desktop-menu.png',fullPage:true});
+            await dpage.locator('[data-nav="roster"]').click();
+            await dpage.waitForTimeout(900);
+            assert(await dpage.locator('[data-fighter="trump"]').first().isVisible(),'Roster did not render');
+            await dpage.screenshot({path:'qa-artifacts/desktop-roster.png',fullPage:true});
+            const ddbg=await dpage.evaluate(()=>window.__TWEAKIN_DEBUG__);
+            const debugErrors=[...(mdbg.errors||[]),...(ddbg.errors||[])];
+            if(debugErrors.length) browserErrors.push(...debugErrors.map(x=>`runtime: ${x}`));
+            fs.writeFileSync('qa-artifacts/debug.json',JSON.stringify({mobile:mdbg,desktop:ddbg,browserErrors},null,2));
+            if(browserErrors.length) throw new Error(browserErrors.join('\n'));
+            await desktop.close();await browser.close();
+            console.log('Browser QA passed: mobile menu, mobile combat, desktop menu and fighter viewer.');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Upload visual QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweakin-browser-qa
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 7
