@@ -25,6 +25,7 @@ jobs:
           set -e
           for f in \
             index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css sw.js manifest.webmanifest icon.svg \
+            assets/tweakin-logo.webp assets/tweakin-hero.webp \
             game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js \
             game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js \
             game/CharacterDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js \
@@ -77,6 +78,7 @@ jobs:
           const refs=[...html.matchAll(/(?:src|href)=["']\.\/([^"'#?]+)["']/g)].map(m=>m[1]);
           const missing=refs.filter(x=>!fs.existsSync(x));
           if(missing.length){console.error('Missing HTML assets:',missing);process.exit(1)}
+          for(const required of ['assets/tweakin-logo.webp','assets/tweakin-hero.webp']) if(!refs.includes(required)) throw new Error(`Brand asset not referenced by HTML: ${required}`);
           console.log('HTML assets OK:',refs.join(', '));
           NODE
 
@@ -91,7 +93,7 @@ jobs:
           const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           const missing=local.filter(x=>!fs.existsSync(x));
           if(missing.length){console.error('Missing cached files:',missing);process.exit(1)}
-          for(const required of ['game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js']){
+          for(const required of ['game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js','assets/tweakin-logo.webp','assets/tweakin-hero.webp']){
             if(!local.includes(required)){console.error('Required runtime missing from offline cache:',required);process.exit(1)}
           }
           console.log(`Offline cache manifest validates ${local.length} local assets.`);
@@ -117,10 +119,12 @@ jobs:
           const sig=fs.readFileSync('game/SignatureFighter.js','utf8');
           const game=fs.readFileSync('game/Game.js','utf8');
           const face=fs.readFileSync('game/FacialAnimator.js','utf8');
+          const css=fs.readFileSync('style-extra.css','utf8');
           if(!sig.includes('FacialAnimator')) throw new Error('Facial animator not wired');
           if(!sig.includes('triggerFinisherReaction')) throw new Error('Finisher reaction choreography missing');
           if(!game.includes('triggerSlowmo')) throw new Error('Impact slow motion missing');
           if(!game.includes('ArenaAtmosphere')) throw new Error('Arena atmosphere not wired');
           if(!face.includes('nextBlink')) throw new Error('Facial blink controller missing');
-          console.log('Presentation stack is wired.');
+          if(!css.includes('tweakin-hero.webp')) throw new Error('Official hero artwork not styled into menu');
+          console.log('Presentation stack and branding are wired.');
           NODE
