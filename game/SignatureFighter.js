@@ -1,15 +1,17 @@
 import { EliteFighter } from './EliteFighter.js';
+import { FacialAnimator } from './FacialAnimator.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
 const freshMetrics=()=>({hits:0,damage:0,bestCombo:0,blocks:0,parries:0,evades:0,specials:0,weapons:0});
 
 export class SignatureFighter extends EliteFighter{
-  constructor(def,slot){super(def,slot);this.specialIndex=-1;this.metrics=freshMetrics();}
+  constructor(def,slot){super(def,slot);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);}
   setState(s,move=''){
     const starting=s==='Attack'&&move==='special'&&this.state!=='Attack';
     if(starting){this.specialIndex=(this.specialIndex+1)%Math.max(1,this.def.finishers?.length||1);this.metrics.specials++;}
     super.setState(s,move);
   }
+  update(dt,input,target,arena){const ev=super.update(dt,input,target,arena);this.facial?.update(dt,target);return ev}
   currentFinisher(){const fs=this.def.finishers||[];return fs[this.specialIndex<0?0:this.specialIndex%Math.max(1,fs.length)]||fs[0]||{name:'Signature',power:36}}
   attackDamage(kind){if(kind==='special'){const f=this.currentFinisher();return f.power*(.8+this.def.stats.upperBody/320)}return super.attackDamage(kind)}
   receiveHit(raw,kind,attacker,dirX,dirZ){
