@@ -1,0 +1,141 @@
+import { THREE } from '../vendor/three.js';
+import { EMPTY_INPUT } from '../core/types.js';
+import { InputManager } from './Input.js';
+import { CombatMatch } from './CombatMatch.js';
+import { AudioEngine } from '../audio/AudioEngine.js';
+export class Game {
+    renderer;
+    camera;
+    input = new InputManager();
+    audio = new AudioEngine();
+    match = null;
+    settings;
+    net = null;
+    running = true;
+    acc = 0;
+    prev = performance.now() / 1000;
+    fps = 60;
+    fpsAccum = 0;
+    fpsFrames = 0;
+    errors = [];
+    hooks = {};
+    host;
+    raf = 0;
+    fixed = 1 / 60;
+    pause = false;
+    lastSnapshotSend = 0;
+    mobile = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || innerWidth < 900;
+    constructor(host, settings) {
+        this.host = host;
+        this.settings = settings;
+        this.renderer = new THREE.WebGLRenderer({ antialias: !this.mobile && settings.quality !== 'low', powerPreference: 'high-performance', alpha: false });
+        this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.mobile ? 1 : settings.quality === 'high' ? 2 : 1.35));
+        this.renderer.setSize(innerWidth, innerHeight);
+        this.renderer.shadowMap.enabled = settings.quality !== 'low';
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.08;
+        host.innerHTML = '';
+        host.appendChild(this.renderer.domElement);
+        this.camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, .08, 80);
+        this.camera.position.set(0, 5.4, 8);
+        addEventListener('resize', () => this.resize());
+        addEventListener('error', e => this.errors.push(String(e.message)));
+        this.audio.setVolumes(settings.masterVolume, settings.musicVolume, settings.sfxVolume);
+        this.loop();
+    }
+    setHooks(h) { this.hooks = h; }
+    start(config) {
+        this.match?.dispose();
+        this.match = new CombatMatch(config, this.audio, { onMessage: (t, d) => this.hooks.onMessage?.(t, d), onKO: () => {}, onEnd: () => this.hooks.onEnd?.(this.match), onSpecial: (f, n) => this.hooks.onSpecial?.(f.def.name, n) });
+        this.audio.startMusic();
+        this.acc = 0;
+        this.pause = false;
+        this.renderer.domElement.focus?.();
+    }
+    stop() { this.match?.dispose(); this.match = null; this.audio.stopMusic(); }
+    setPaused(v) { this.pause = v; }
+    setNetwork(net) { this.net = net; }
+    loop = () => {
+        if (!this.running) return;
+        this.raf = requestAnimationFrame(this.loop);
+        const now = performance.now() / 1000;
+        const dt = Math.min(.1, now - this.prev);
+        this.prev = now;
+        this.fpsAccum += dt;
+        this.fpsFrames++;
+        if (this.fpsAccum > .5) { this.fps = this.fpsFrames / this.fpsAccum; this.fpsAccum = 0; this.fpsFrames = 0; }
+        this.audio.update();
+        if (!this.pause && this.match) {
+            this.acc += dt;
+            let steps = 0;
+            while (this.acc >= this.fixed && steps < 5) { this.step(this.fixed); this.acc -= this.fixed; steps++; }
+            this.match.tickCinematic(dt);
+            this.updateCamera(dt);
+            this.renderer.render(this.match.scene, this.camera);
+            this.hooks.onHud?.(this.match);
+        }
+        this.input.endFrame();
+        this.exposeDebug();
+    };
+    step(dt) {
+        if (!this.match) return;
+        const inputs = this.match.fighters.map(() => ({ ...EMPTY_INPUT }));
+        for (const slot of this.match.config.humanSlots) {
+            if (this.net) {
+                const mine = this.net.localSlot;
+                if (slot === mine) inputs[slot] = this.input.frame(0);
+                else inputs[slot] = this.net.getRemoteInput(slot);
+            } else inputs[slot] = this.input.frame(slot);
+        }
+        if (this.net) {
+            this.net.sendLocalInput(inputs[this.net.localSlot] ?? { ...EMPTY_INPUT }, this.match.frame);
+            if (this.net.isHost) {
+                this.match.update(dt, inputs);
+                this.lastSnapshotSend += dt;
+                if (this.lastSnapshotSend > 1 / 20) {
+                    this.lastSnapshotSend = 0;
+                    this.net.broadcastSnapshot({ frame: this.match.frame, remaining: this.match.remaining, fighters: this.match.snapshots() });
+                }
+            } else {
+                const snap = this.net.consumeSnapshot();
+                if (snap) { this.match.remaining = snap.remaining; this.match.applySnapshots(snap.fighters); }
+            }
+        } else this.match.update(dt, inputs);
+    }
+    updateCamera(dt) {
+        if (!this.match) return;
+        const target = this.match.getCameraTarget();
+        let tx = target.x, tz = target.z, ty = target.y, distance = target.distance, angle = 0;
+        if (target.cinematic) {
+            const [a, b] = target.cinematic;
+            tx = (a.group.position.x + b.group.position.x) / 2;
+            tz = (a.group.position.z + b.group.position.z) / 2;
+            distance = 4.8;
+            angle = a.yaw + .8;
+        } else if (this.match.fighters[0] && this.match.fighters[1]) {
+            const a = this.match.fighters[0], b = this.match.fighters[1];
+            angle = Math.atan2(b.group.position.x - a.group.position.x, b.group.position.z - a.group.position.z) + Math.PI / 2;
+        }
+        const shake = this.settings.reducedMotion ? 0 : this.match.cameraShake * this.settings.cameraShake;
+        const sx = (Math.random() - .5) * shake * .16, sy = (Math.random() - .5) * shake * .12;
+        const desired = new THREE.Vector3(tx + Math.sin(angle) * distance + sx, 3.4 + distance * .22 + sy, tz + Math.cos(angle) * distance + sx);
+        this.camera.position.lerp(desired, 1 - Math.exp(-dt * 5.2));
+        this.camera.lookAt(new THREE.Vector3(tx, ty, tz));
+    }
+    resize() {
+        const w = innerWidth, h = innerHeight;
+        this.camera.aspect = w / h;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.mobile ? 1 : this.settings.quality === 'high' ? 2 : 1.35));
+    }
+    updateSettings(s) { this.settings = s; this.audio.setVolumes(s.masterVolume, s.musicVolume, s.sfxVolume); this.resize(); }
+    exposeDebug() {
+        const d = this.match?.debug(this.fps, this.errors.slice(-10), this.net?.debug() ?? {}) ?? { mode: 'menu', arena: '', fps: this.fps, errors: this.errors.slice(-10), network: this.net?.debug() ?? {}, fighters: [], frame: 0 };
+        window.__TWEAKIN_DEBUG__ = d;
+        window.__TWEAKIN_GAME__ = this;
+    }
+    destroy() { this.running = false; cancelAnimationFrame(this.raf); this.stop(); this.renderer.dispose(); this.renderer.domElement.remove(); }
+}
