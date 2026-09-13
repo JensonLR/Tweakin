@@ -2,6 +2,7 @@ import { THREE } from '../vendor/three.js';
 import { UltraFighter } from './UltraFighter.js';
 import { addFaceDetail } from './FaceDetail.js';
 import { addCharacterDetail } from './CharacterDetail.js';
+import { addAnatomyDetail } from './AnatomyDetail.js';
 import { CombatWear } from './CombatWear.js';
 import { applyFighterSurface } from './SurfaceDetail.js';
 
@@ -12,7 +13,7 @@ export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;this.signatureStep=0;
-    addFaceDetail(this);addCharacterDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);
+    addFaceDetail(this);addCharacterDetail(this);addAnatomyDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);
   }
   setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting)this.signatureStep=(this.signatureStep+1)%4}
   update(dt,input,target,arena){
