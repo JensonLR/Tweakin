@@ -1,16 +1,24 @@
 import { EliteFighter } from './EliteFighter.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
+const freshMetrics=()=>({hits:0,damage:0,bestCombo:0,blocks:0,parries:0,evades:0,specials:0,weapons:0});
 
 export class SignatureFighter extends EliteFighter{
-  constructor(def,slot){super(def,slot);this.specialIndex=-1;}
+  constructor(def,slot){super(def,slot);this.specialIndex=-1;this.metrics=freshMetrics();}
   setState(s,move=''){
     const starting=s==='Attack'&&move==='special'&&this.state!=='Attack';
-    if(starting)this.specialIndex=(this.specialIndex+1)%Math.max(1,this.def.finishers?.length||1);
+    if(starting){this.specialIndex=(this.specialIndex+1)%Math.max(1,this.def.finishers?.length||1);this.metrics.specials++;}
     super.setState(s,move);
   }
   currentFinisher(){const fs=this.def.finishers||[];return fs[this.specialIndex<0?0:this.specialIndex%Math.max(1,fs.length)]||fs[0]||{name:'Signature',power:36}}
   attackDamage(kind){if(kind==='special'){const f=this.currentFinisher();return f.power*(.8+this.def.stats.upperBody/320)}return super.attackDamage(kind)}
+  receiveHit(raw,kind,attacker,dirX,dirZ){
+    const result=super.receiveHit(raw,kind,attacker,dirX,dirZ);
+    if(result?.blocked)this.metrics.blocks++;
+    else if(attacker&&attacker!==this&&result?.damage>0){attacker.metrics??=freshMetrics();attacker.metrics.hits++;attacker.metrics.damage+=result.damage;attacker.metrics.bestCombo=Math.max(attacker.metrics.bestCombo,attacker.combo||0);if(kind==='weapon')attacker.metrics.weapons++;}
+    return result;
+  }
+  tryDefense(kind,attacker){const r=super.tryDefense(kind,attacker);if(r?.parried)this.metrics.parries++;if(r?.evaded)this.metrics.evades++;return r}
   animate(dt,input){
     super.animate(dt,input);if(this.state!=='Attack'||this.attackType!=='special'||this.specialIndex!==1)return;
     const p=Math.min(1,this.stateTime/2.35),b=bell(p),id=this.def.id;
@@ -23,6 +31,6 @@ export class SignatureFighter extends EliteFighter{
     else if(id==='greek'){this.leftArm.rotation.x-=b*.92;this.rightArm.rotation.x-=b*.92;this.torso.rotation.x+=b*.18;this.head.rotation.y+=b*.18;}
     else if(id==='wojak'){this.torso.rotation.y+=Math.sin(p*Math.PI*4)*b*.44;this.leftArm.rotation.z-=Math.sin(p*Math.PI*3)*b*.48;this.head.rotation.z+=Math.sin(p*Math.PI*6)*b*.16;}
   }
-  snapshot(){return{...super.snapshot(),specialIndex:this.specialIndex}}
-  applySnapshot(s){super.applySnapshot(s);this.specialIndex=s.specialIndex??this.specialIndex}
+  snapshot(){return{...super.snapshot(),specialIndex:this.specialIndex,metrics:{...this.metrics}}}
+  applySnapshot(s){super.applySnapshot(s);this.specialIndex=s.specialIndex??this.specialIndex;if(s.metrics)this.metrics={...this.metrics,...s.metrics}}
 }
