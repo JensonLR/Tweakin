@@ -1,3 +1,4 @@
+import { THREE } from '../vendor/three.js';
 import { CombatMatch } from './CombatMatch.js';
 import { EMPTY_INPUT } from '../core/types.js';
 
@@ -12,6 +13,14 @@ export class CinematicCombatMatch extends CombatMatch{
     const attacker=ev?.fighter,target=attacker?this.closestTarget(attacker):null,wasConnected=!!attacker?.attackConnected;
     super.resolveAttack(ev);
     if(ev?.type==='special'&&attacker&&target&&!wasConnected&&attacker.attackConnected){const style=Math.max(0,attacker.specialIndex??0);target.triggerFinisherReaction?.(style,attacker.def.id);this.cinematic=[attacker,target];this.cinematicTime=Math.max(this.cinematicTime,1.55);this.cameraShake=Math.max(this.cameraShake,1.02);}
+  }
+  resolveHazards(){
+    if(this.config.mode==='training')return;const hazard=this.ruleHazard();
+    if(hazard==='subway'&&this.arena.trainHazardAt){
+      for(const f of this.fighters){if(f.ko||((f._trainSafeUntil??0)>this.elapsed))continue;if(!this.arena.trainHazardAt(f.group.position.x,f.group.position.z))continue;const attacker=this.fighters.find(x=>x!==f&&!x.ko)??f;const side=Math.sign(f.group.position.z)||1;const result=f.receiveHit(46,'environment',attacker,0,-side);f._trainSafeUntil=this.elapsed+.9;this.emit(result.ko?'TRACK KNOCKOUT':'TRAIN IMPACT');this.cameraShake=Math.max(this.cameraShake,1.15);this.hitStop=Math.max(this.hitStop,.08);this.audio.environment?.();this.arena.react?.(1.35);this.hooks.onImpact?.(new THREE.Vector3(f.group.position.x,1.25,f.group.position.z),'environment',false,attacker,f);}
+      return;
+    }
+    super.resolveHazards();
   }
   finish(winner){
     if(this.finished)return;this.finished=true;this.winner=winner;const loser=this.fighters.find(f=>f!==winner&&f.ko)||this.fighters.find(f=>f!==winner)||null;if(winner){winner.state='Victory';winner.stateTime=0;winner.momentum=100;}this.audio.win?.();this.postFinishElapsed=0;this.resultSent=false;
