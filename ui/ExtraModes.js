@@ -8,7 +8,13 @@ export class ExtraModes{
   constructor(ui){this.ui=ui;this.root=ui.root;this.installHudHook();this.observer=new MutationObserver(()=>this.sync());this.observer.observe(this.root,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});this.sync();}
   installHudHook(){const original=this.ui.game.hooks.onHud;this.ui.game.hooks.onHud=m=>{original?.(m);this.onHud(m)}}
   onHud(match){if(match?.config?.mode!=='chaos'||match.fighters.length<3)return;let shell=this.root.querySelector('#chaos-hud');if(!shell){shell=document.createElement('div');shell.id='chaos-hud';shell.className='chaos-hud';this.root.querySelector('#hud')?.appendChild(shell)}if(!shell)return;const extras=match.fighters.slice(2);shell.innerHTML=extras.map((f,i)=>`<div class="chaos-chip ${f.ko?'ko':''}"><div class="chaos-name">P${i+3} • ${esc(f.def.shortName)}</div><div class="chaos-bar"><i style="width:${pct(f.physical)}"></i><b style="width:${pct(f.consciousness)}"></b></div><span>${f.ko?'KO':f.state}</span></div>`).join('')}
-  sync(){if(this.root.classList.contains('menu'))this.injectMenu()}
+  sync(){if(this.root.classList.contains('menu'))this.injectMenu();this.polishResult()}
+  polishResult(){
+    const card=this.root.querySelector('.result-card');if(!card||card.dataset.metrics==='1')return;const match=this.ui.game.match;if(!match?.fighters?.length)return;card.dataset.metrics='1';
+    const winner=match.winner??match.fighters[0],ordered=[winner,...match.fighters.filter(f=>f!==winner)],stats=document.createElement('div');stats.className='result-metrics';
+    stats.innerHTML=ordered.slice(0,4).map((f,i)=>{const m=f.metrics??{},condition=Math.round((f.physical+f.consciousness)/2);return `<div class="result-metric-fighter ${f===winner?'winner':''}"><div class="result-metric-head"><span>${f===winner?'WINNER':`P${f.slot+1}`}</span><b>${esc(f.def.shortName)}</b></div><div class="result-metric-grid"><em>HITS<strong>${Math.round(m.hits||0)}</strong></em><em>DAMAGE<strong>${Math.round(m.damage||0)}</strong></em><em>BEST COMBO<strong>${Math.round(m.bestCombo||0)}</strong></em><em>DEFENCE<strong>${Math.round((m.blocks||0)+(m.parries||0)+(m.evades||0))}</strong></em><em>SPECIALS<strong>${Math.round(m.specials||0)}</strong></em><em>CONDITION<strong>${condition}%</strong></em></div></div>`}).join('');
+    const actions=card.querySelector('.action-row');actions?card.insertBefore(stats,actions):card.appendChild(stats);
+  }
   injectMenu(){const stack=this.root.querySelector('.menu-stack');if(!stack||stack.querySelector('[data-extra-mode]'))return;
     const credits=stack.querySelector('[data-nav="credits"]');const wrap=document.createDocumentFragment();
     [['local','Local Versus'],['chaos','4-Way Chaos'],['guide','Fight Guide']].forEach(([id,label])=>{const b=document.createElement('button');b.className='menu-btn interactive extra-mode-btn';b.dataset.extraMode=id;b.textContent=label;b.onclick=()=>{this.ui.game.audio.ui(true);id==='local'?this.renderLocal():id==='chaos'?this.renderChaos():this.renderGuide()};wrap.appendChild(b)});
@@ -36,7 +42,7 @@ export class ExtraModes{
       ['GRAPPLE','Grab at close range to beat passive blocking. Grapples scale from upper-body strength and wrestling-oriented styles.'],
       ['BLOCK / PARRY','Hold Block to reduce strike damage. Tap Block just before impact for a short parry window that stuns the attacker and builds momentum.'],
       ['EVADE','Hold Block + Run while moving sideways to perform an evasive step. It has a brief invulnerability window and a cooldown.'],
-      ['MOMENTUM','Land attacks, chain combos and defend well to fill Momentum. At 100, trigger Special for your fighter’s signature finisher sequence.'],
+      ['MOMENTUM','Land attacks, chain combos and defend well to fill Momentum. At 100, trigger Special for alternating fighter-specific finisher sequences.'],
       ['WEAPONS','Use Weapon near bottles, pipes, bats or brooms. Weapons add reach and impact but can break.'],
       ['ENVIRONMENT','Heavy attacks, grapples and specials can drive opponents into walls and breakables. Some venues have ring-out, glass, subway or inferno hazards.']
     ];
