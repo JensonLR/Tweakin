@@ -11,6 +11,8 @@
   <title>TWEAKIN</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="preload" href="./assets/tweakin-logo.webp" as="image" type="image/webp" />
+  <link rel="preload" href="./assets/tweakin-hero.webp" as="image" type="image/webp" />
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./style-premium.css" />
   <link rel="stylesheet" href="./style-cinematic.css" />
@@ -23,9 +25,10 @@
     <div id="fx-overlay"></div>
     <div id="ui-root">
       <div class="boot-shell">
-        <div class="boot-wordmark"><span>TWEA</span><b>KIN</b></div>
+        <img class="boot-logo-image" src="./assets/tweakin-logo.webp" alt="TWEAKIN" />
+        <div class="boot-wordmark boot-wordmark-fallback"><span>TWEA</span><b>KIN</b></div>
         <div class="boot-rule"></div>
-        <div class="boot-copy">LOADING FIGHT WORLD</div>
+        <div class="boot-copy">ENTER THE FIGHT WORLD</div>
       </div>
     </div>
   </div>
