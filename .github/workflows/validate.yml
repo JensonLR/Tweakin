@@ -1,0 +1,70 @@
+name: Validate TWEAKIN
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify required files
+        run: |
+          test -f index.html
+          test -f style.css
+          test -f main.js
+          test -f game/Game.js
+          test -f game/CombatMatch.js
+          test -f game/Fighter.js
+          test -f game/Arena.js
+          test -f game/Input.js
+          test -f game/AI.js
+          test -f ui/AppUI.js
+          test -f audio/AudioEngine.js
+          test -f persistence/SaveStore.js
+          test -f multiplayer/NetSession.js
+          test -f data/roster.js
+          test -f data/arenas.js
+      - name: JavaScript syntax check
+        run: |
+          find . -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Import graph smoke check
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const files = [];
+          function walk(dir) {
+            for (const ent of fs.readdirSync(dir, {withFileTypes:true})) {
+              if (ent.name === '.git') continue;
+              const p = path.join(dir, ent.name);
+              if (ent.isDirectory()) walk(p);
+              else if (p.endsWith('.js')) files.push(p);
+            }
+          }
+          walk('.');
+          let failed = false;
+          const re = /(?:from\s+|import\s*)['\"](\.{1,2}\/[^'\"]+)['\"]/g;
+          for (const file of files) {
+            const src = fs.readFileSync(file, 'utf8');
+            for (const m of src.matchAll(re)) {
+              const resolved = path.resolve(path.dirname(file), m[1]);
+              if (!fs.existsSync(resolved)) {
+                console.error(`Missing import: ${file} -> ${m[1]}`);
+                failed = true;
+              }
+            }
+          }
+          if (failed) process.exit(1);
+          console.log(`Validated ${files.length} JS modules and their local imports.`);
+          NODE
