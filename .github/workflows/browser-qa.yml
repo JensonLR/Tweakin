@@ -53,14 +53,21 @@ jobs:
               page.on('console',m=>{if(m.type()==='error')report.browserErrors.push(`mobile console: ${m.text()}`)});
               await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
               await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__,null,{timeout:30000});
-              assert(await page.locator('[data-nav="quick"]').isVisible(),'Quick Fight not visible on mobile');
+              assert(await page.locator('[data-nav="battle"]').isVisible(),'Battle mode not visible on mobile');
               assert(await page.locator('.brand-word').isVisible(),'Brand mark not visible on mobile');
               await page.screenshot({path:'qa-artifacts/mobile-menu.png',fullPage:true});
 
+              report.stage='mobile-battle-setup';
+              await page.locator('[data-nav="battle"]').click();
+              await page.waitForSelector('#battle-start',{state:'visible',timeout:10000});
+              assert(await page.locator('[data-fighter="trump"]').first().isVisible(),'Trump selection card missing');
+              assert(await page.locator('[data-fighter="gigachad"]').first().isVisible(),'Gigachad selection card missing');
+              await page.screenshot({path:'qa-artifacts/mobile-battle-setup.png',fullPage:true});
+
               report.stage='mobile-portrait-combat';
-              await page.locator('[data-nav="quick"]').click();
+              await page.locator('#battle-start').click();
               await page.waitForFunction(()=>window.__TWEAKIN_GAME__?.match?.fighters?.length>=2,null,{timeout:15000});
-              await page.waitForFunction(()=>window.__TWEAKIN_DEBUG__?.frame>15,null,{timeout:30000});
+              await page.waitForFunction(()=>window.__TWEAKIN_DEBUG__?.frame>20,null,{timeout:30000});
               assert(await page.locator('.mobile-touch').isVisible(),'Touch controls are hidden on mobile');
               assert(await page.locator('[data-touch="light"]').isVisible(),'Light attack touch button missing');
               const beforeFrame=await page.evaluate(()=>window.__TWEAKIN_DEBUG__.frame);
@@ -69,9 +76,10 @@ jobs:
               await page.locator('[data-touch="light"]').dispatchEvent('pointerup',{pointerId:1,pointerType:'touch',isPrimary:true});
               await page.waitForFunction(f=>window.__TWEAKIN_DEBUG__?.frame>f+4,beforeFrame,{timeout:10000});
               report.mobile=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
-              assert(report.mobile.mode==='quick','Quick fight did not start');
-              assert(report.mobile.fighters.length===2,'Expected two fighters');
-              assert(report.mobile.frame>15,'Combat simulation did not advance');
+              assert(report.mobile.mode==='battle','Deterministic battle did not start');
+              assert(report.mobile.arena==='underpass','Unexpected deterministic QA arena');
+              assert(report.mobile.fighters[0]?.id==='trump'&&report.mobile.fighters[1]?.id==='gigachad','Unexpected deterministic QA fighters');
+              assert(report.mobile.frame>20,'Combat simulation did not advance');
               assert(Number.isFinite(report.mobile.fps)&&report.mobile.fps>0,'FPS debug invalid');
               assert(report.mobile.lighting?.active===true,'Combat lighting is not active');
               await page.screenshot({path:'qa-artifacts/mobile-fight-portrait.png'});
@@ -79,7 +87,7 @@ jobs:
               report.stage='mobile-landscape-combat';
               await page.setViewportSize({width:844,height:390});
               const landscapeStart=await page.evaluate(()=>window.__TWEAKIN_DEBUG__.frame);
-              await page.waitForFunction(f=>window.__TWEAKIN_DEBUG__?.frame>f+8,landscapeStart,{timeout:15000});
+              await page.waitForFunction(f=>window.__TWEAKIN_DEBUG__?.frame>f+10,landscapeStart,{timeout:15000});
               assert(await page.locator('.mobile-touch').isVisible(),'Touch controls disappeared in landscape');
               await page.screenshot({path:'qa-artifacts/mobile-fight-landscape.png'});
               report.mobileLandscape=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
@@ -108,7 +116,7 @@ jobs:
               await desktop.close();
               report.stage='complete';write();
               if(report.browserErrors.length)throw new Error(report.browserErrors.join('\n'));
-              console.log('Browser QA passed: live mobile combat, touch input, portrait/landscape framing, desktop menu and fighter viewer.');
+              console.log('Browser QA passed: deterministic Trump vs Gigachad battle, touch input, portrait/landscape framing, desktop menu and fighter viewer.');
             } finally {
               write();
               await browser.close();
