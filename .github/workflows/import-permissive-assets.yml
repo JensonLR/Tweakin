@@ -1,0 +1,59 @@
+name: Import permissive authored assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-permissive-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import CC0 and public-domain GLBs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/characters/reference assets/characters/greek assets/licenses
+
+          curl -fsSL 'https://raw.githubusercontent.com/programasweights/avatar/main/public/assets/character.glb' -o assets/characters/reference/quaternius-common-rig.glb
+          curl -fsSL 'https://raw.githubusercontent.com/programasweights/avatar/main/public/assets/gangnam-character.glb' -o assets/characters/reference/formal-rig-reference.glb
+          curl -fsSL 'https://raw.githubusercontent.com/programasweights/avatar/main/public/assets/QUATERNIUS-LICENSE.txt' -o assets/licenses/QUATERNIUS-CC0.txt
+          curl -fsSL 'https://raw.githubusercontent.com/annasba07/threedpt/main/public/models/Human.glb' -o assets/characters/reference/quaternius-human.glb
+
+          mkdir -p /tmp/met-greek
+          curl -fsSL 'https://raw.githubusercontent.com/InconsolableCellist/met_scans/master/met-dl.sh' -o /tmp/met-dl.sh
+          chmod +x /tmp/met-dl.sh
+          (cd /tmp/met-greek && /tmp/met-dl.sh 242211 glb) || true
+          greek_file=$(find /tmp/met-greek -maxdepth 1 -type f -name '*.glb' | head -n 1 || true)
+          if [ -n "$greek_file" ]; then cp "$greek_file" assets/characters/greek/herakles-met-public-domain.glb; fi
+
+          cat > assets/characters/ASSET_SOURCES.md <<'EOF'
+          # TWEAKIN authored character sources
+
+          - `reference/quaternius-common-rig.glb` — Quaternius Universal Base Characters, CC0 1.0. Imported from `programasweights/avatar` where the source and licence are preserved.
+          - `reference/formal-rig-reference.glb` — Quaternius CC0 base plus MIT-licensed project modifications from `programasweights/avatar`; reference only, not a roster likeness.
+          - `reference/quaternius-human.glb` — Quaternius-derived CC0 human from `annasba07/threedpt`; reference only.
+          - `greek/herakles-met-public-domain.glb` — The Metropolitan Museum of Art 3D asset for object 242211 when available; public-domain museum object/source. Imported through `InconsolableCellist/met_scans` downloader.
+
+          These reference assets establish the authored GLB/rig/retargeting pipeline. They are not substitutes for likeness-specific final fighters.
+          EOF
+
+          for f in assets/characters/reference/*.glb assets/characters/greek/*.glb; do
+            [ -f "$f" ] || continue
+            test "$(stat -c%s "$f")" -gt 10000
+            head -c4 "$f" | grep -q 'glTF'
+          done
+      - name: Commit imported assets
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/characters assets/licenses
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Import permissive authored GLB reference assets'
+          git push
