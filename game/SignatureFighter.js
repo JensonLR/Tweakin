@@ -6,6 +6,7 @@ import { applySilhouetteFix } from './SilhouetteFix.js';
 import { applyHumanProportions } from './HumanProportionFix.js';
 import { ImportedCombatVisual } from './ImportedCombatVisual.js';
 import { FallbackMotion } from './FallbackMotion.js';
+import { PoseBaseline } from './PoseBaseline.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
 const clamp=x=>Math.max(0,Math.min(1,x));
@@ -27,6 +28,7 @@ export class SignatureFighter extends EliteFighter{
     this.introPose=-1;
     this.importedVisual=new ImportedCombatVisual(this);
     this.fallbackMotion=new FallbackMotion(this);
+    this.poseBaseline=new PoseBaseline(this);
   }
   setIntroPose(progress=-1){this.introPose=progress<0?-1:clamp(progress)}
   setState(s,move=''){
@@ -104,6 +106,7 @@ export class SignatureFighter extends EliteFighter{
   }
   animate(dt,input){
     super.animate(dt,input);
+    this.poseBaseline?.apply();
     this.secondFinisherAccent();
     this.fallbackMotion?.apply();
     this.entrancePose();
