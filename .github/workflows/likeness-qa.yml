@@ -40,38 +40,26 @@ jobs:
             const page=await ctx.newPage();
             await page.goto('http://127.0.0.1:4174/',{waitUntil:'networkidle',timeout:45000});
             await page.waitForFunction(()=>window.__TWEAKIN_GAME__,null,{timeout:30000});
+            await page.evaluate(()=>{const g=window.__TWEAKIN_GAME__;g.stop();g.running=false;cancelAnimationFrame(g.raf);document.getElementById('ui-root').style.display='none';});
             for(const id of ids){
-              await page.evaluate((fighterId)=>{
+              await page.evaluate(async fighterId=>{
+                const [{THREE},{SignatureFighter},{getFighterDef}]=await Promise.all([import('/vendor/three.js'),import('/game/SignatureFighter.js'),import('/data/roster.js')]);
                 const g=window.__TWEAKIN_GAME__;
-                g.stop();
-                const opponent=fighterId==='wojak'?'trump':'wojak';
-                g.start({mode:'qa',matchType:'Training',arenaId:'iron-gym',fighters:[fighterId,opponent],humanSlots:[],aiDifficulty:0,roundSeconds:9999});
-                g.setPaused(true);
-                const [f,o]=g.match.fighters;
-                f.group.position.set(0,0,0);f.group.rotation.y=0;f.yaw=0;
-                if(o)o.group.visible=false;
-                g.match.arena.group.visible=false;
-                g.combatLighting?.update?.(0,g.camera);
+                if(window.__LIK_SCENE__){window.__LIK_SCENE__.traverse(o=>{o.geometry?.dispose?.();const ms=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];ms.forEach(m=>m?.dispose?.())});}
+                const scene=new THREE.Scene();scene.background=new THREE.Color(0x07080a);
+                const fighter=new SignatureFighter(getFighterDef(fighterId),0);fighter.group.position.set(0,0,0);fighter.group.rotation.y=0;fighter.yaw=0;scene.add(fighter.group);
+                const floor=new THREE.Mesh(new THREE.CircleGeometry(3.2,48),new THREE.MeshStandardMaterial({color:0x101216,roughness:.72,metalness:.04}));floor.rotation.x=-Math.PI/2;floor.position.y=.002;floor.receiveShadow=true;scene.add(floor);
+                scene.add(new THREE.HemisphereLight(0xe7efff,0x201419,2.1));
+                const key=new THREE.DirectionalLight(0xffe3d0,4.7);key.position.set(-2.6,5.4,3.4);key.castShadow=true;scene.add(key);
+                const fill=new THREE.DirectionalLight(0xb8d1ff,2.2);fill.position.set(3,2.8,3.8);scene.add(fill);
+                const rim=new THREE.PointLight(0xff3044,9,9,1.6);rim.position.set(2.4,2.5,-2.0);scene.add(rim);
+                g.renderer.setPixelRatio(1);g.renderer.setSize(900,900,false);g.renderer.toneMapping=THREE.ACESFilmicToneMapping;g.renderer.toneMappingExposure=1.08;
+                window.__LIK_SCENE__=scene;window.__LIK_FIGHTER__=fighter;
               },id);
-              await page.waitForTimeout(80);
-              await page.evaluate(()=>{
-                const g=window.__TWEAKIN_GAME__,f=g.match.fighters[0];
-                g.camera.position.set(0,1.82,4.25);g.camera.fov=28;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.48,0);
-                g.renderer.render(g.match.scene,g.camera);
-              });
-              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-full.png`});
-              await page.evaluate(()=>{
-                const g=window.__TWEAKIN_GAME__;
-                g.camera.position.set(0,2.05,1.72);g.camera.fov=24;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.98,0);
-                g.renderer.render(g.match.scene,g.camera);
-              });
-              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-face.png`});
-              await page.evaluate(()=>{
-                const g=window.__TWEAKIN_GAME__;
-                g.camera.position.set(1.35,2.02,1.65);g.camera.fov=25;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.95,0);
-                g.renderer.render(g.match.scene,g.camera);
-              });
-              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-three-quarter.png`});
+              const render=async(pos,look,fov,path)=>{await page.evaluate(({pos,look,fov})=>{const g=window.__TWEAKIN_GAME__,s=window.__LIK_SCENE__;g.camera.position.set(...pos);g.camera.fov=fov;g.camera.aspect=1;g.camera.updateProjectionMatrix();g.camera.lookAt(...look);g.renderer.render(s,g.camera);},{pos,look,fov});await page.locator('#render-host canvas').screenshot({path});};
+              await render([0,1.82,4.5],[0,1.48,0],28,`likeness-artifacts/${id}-full.png`);
+              await render([0,2.03,1.62],[0,1.98,0],23,`likeness-artifacts/${id}-face.png`);
+              await render([1.26,2.04,1.62],[0,1.96,0],24,`likeness-artifacts/${id}-three-quarter.png`);
             }
             await ctx.close();await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
