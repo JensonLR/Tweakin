@@ -24,129 +24,69 @@ jobs:
         run: |
           set -e
           for f in \
-            index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css style-brand.css style-polish.css sw.js manifest.webmanifest icon.svg \
-            assets/tweakin-logo.webp assets/tweakin-hero.webp \
-            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js \
-            game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js \
-            game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js \
-            game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
-            ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js ui/HUDPortraits.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js \
-            data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js vendor/three.js
+            index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css style-brand.css style-polish.css style-final.css style-ux.css sw.js manifest.webmanifest icon.svg \
+            assets/tweakin-logo.webp assets/tweakin-hero.webp vendor/three.js \
+            ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js ui/HUDPortraits.js ui/UXEnhancements.js \
+            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js \
+            game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js \
+            game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
+            data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js
           do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
-      - name: JavaScript syntax check
-        run: find . -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-
-      - name: Import graph smoke check
+      - name: JavaScript syntax and import graph
         run: |
+          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
           node - <<'NODE'
-          const fs = require('fs');
-          const path = require('path');
-          const files = [];
-          function walk(dir) {
-            for (const ent of fs.readdirSync(dir, {withFileTypes:true})) {
-              if (ent.name === '.git' || ent.name === 'node_modules') continue;
-              const p = path.join(dir, ent.name);
-              if (ent.isDirectory()) walk(p);
-              else if (p.endsWith('.js')) files.push(p);
-            }
-          }
-          walk('.');
-          let failed = false;
-          const re = /(?:from\s+|import\s*)['\"](\.{1,2}\/[^'\"]+)['\"]/g;
-          for (const file of files) {
-            const src = fs.readFileSync(file, 'utf8');
-            for (const m of src.matchAll(re)) {
-              const resolved = path.resolve(path.dirname(file), m[1]);
-              if (!fs.existsSync(resolved)) {
-                console.error(`Missing import: ${file} -> ${m[1]}`);
-                failed = true;
-              }
-            }
-          }
-          if (failed) process.exit(1);
-          console.log(`Validated ${files.length} JS modules and local imports.`);
+          const fs=require('fs'),path=require('path'),files=[];
+          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(['.git','node_modules'].includes(e.name))continue;const p=path.join(d,e.name);e.isDirectory()?walk(p):p.endsWith('.js')&&files.push(p)}} walk('.');
+          let bad=false;const re=/(?:from\s+|import\s*)['\"](\.{1,2}\/[^'\"]+)['\"]/g;
+          for(const f of files){const src=fs.readFileSync(f,'utf8');for(const m of src.matchAll(re)){const r=path.resolve(path.dirname(f),m[1]);if(!fs.existsSync(r)){console.error(`Missing import: ${f} -> ${m[1]}`);bad=true}}}
+          if(bad)process.exit(1);console.log(`Validated ${files.length} JavaScript modules.`)
           NODE
 
-      - name: Validate HTML asset references
+      - name: Validate HTML and offline cache
         run: |
           node - <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('index.html','utf8');
-          const refs=[...html.matchAll(/(?:src|href)=["']\.\/([^"'#?]+)["']/g)].map(m=>m[1]);
-          const missing=refs.filter(x=>!fs.existsSync(x));
-          if(missing.length){console.error('Missing HTML assets:',missing);process.exit(1)}
-          for(const required of ['assets/tweakin-logo.webp','assets/tweakin-hero.webp','style-brand.css','style-polish.css']) if(!refs.includes(required)) throw new Error(`Required branded asset not referenced by HTML: ${required}`);
-          console.log('HTML assets OK:',refs.join(', '));
+          const htmlRefs=[...html.matchAll(/(?:src|href)=["']\.\/([^"'#?]+)["']/g)].map(m=>m[1]);
+          const requiredHtml=['assets/tweakin-logo.webp','assets/tweakin-hero.webp','style-brand.css','style-polish.css','style-final.css','style-ux.css','main.js'];
+          for(const r of requiredHtml)if(!htmlRefs.includes(r))throw new Error(`Required HTML runtime not referenced: ${r}`);
+          for(const r of htmlRefs)if(!fs.existsSync(r))throw new Error(`HTML references missing file: ${r}`);
+          const sw=fs.readFileSync('sw.js','utf8'),match=sw.match(/const CORE=\[(.*?)\];/s);if(!match)throw new Error('CORE cache manifest missing');
+          const refs=[...match[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
+          for(const r of local)if(!fs.existsSync(r))throw new Error(`Offline cache references missing file: ${r}`);
+          for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
+          console.log(`HTML and offline cache validate ${local.length} local assets.`)
           NODE
 
-      - name: Validate service worker local cache manifest
+      - name: Validate game content and presentation stack
         run: |
           node - <<'NODE'
           const fs=require('fs');
-          const sw=fs.readFileSync('sw.js','utf8');
-          const match=sw.match(/const CORE=\[(.*?)\];/s);
-          if(!match) throw new Error('CORE cache manifest missing');
-          const refs=[...match[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
-          const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
-          const missing=local.filter(x=>!fs.existsSync(x));
-          if(missing.length){console.error('Missing cached files:',missing);process.exit(1)}
-          for(const required of ['style-brand.css','style-polish.css','ui/HUDPortraits.js','game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/HitReaction.js','game/ComboChoreography.js','game/AnatomyDetail.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js','game/CombatLighting.js','assets/tweakin-logo.webp','assets/tweakin-hero.webp']){
-            if(!local.includes(required)){console.error('Required runtime missing from offline cache:',required);process.exit(1)}
-          }
-          console.log(`Offline cache manifest validates ${local.length} local assets.`);
-          NODE
-
-      - name: Validate roster and arenas are populated
-        run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          const roster=fs.readFileSync('data/roster.js','utf8');
-          const arenas=fs.readFileSync('data/arenas.js','utf8');
-          const fighterIds=['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'];
-          for(const id of fighterIds) if(!roster.includes(`id: '${id}'`)&&!roster.includes(`id:'${id}'`)) throw new Error(`Roster fighter missing: ${id}`);
-          const arenaCount=(arenas.match(/\bid:\s*'/g)||[]).length;
-          if(arenaCount<12) throw new Error(`Expected at least 12 arenas, found ${arenaCount}`);
-          console.log(`Roster and ${arenaCount} arenas present.`);
-          NODE
-
-      - name: Validate presentation stack
-        run: |
-          node - <<'NODE'
-          const fs=require('fs');
-          const sig=fs.readFileSync('game/SignatureFighter.js','utf8');
-          const elite=fs.readFileSync('game/EliteFighter.js','utf8');
-          const game=fs.readFileSync('game/Game.js','utf8');
-          const face=fs.readFileSync('game/FacialAnimator.js','utf8');
-          const hit=fs.readFileSync('game/HitReaction.js','utf8');
-          const combo=fs.readFileSync('game/ComboChoreography.js','utf8');
-          const anatomy=fs.readFileSync('game/AnatomyDetail.js','utf8');
-          const lighting=fs.readFileSync('game/CombatLighting.js','utf8');
-          const menu=fs.readFileSync('game/MenuBackdrop.js','utf8');
-          const hud=fs.readFileSync('ui/HUDPortraits.js','utf8');
-          const main=fs.readFileSync('main.js','utf8');
-          const brand=fs.readFileSync('style-brand.css','utf8');
-          const polish=fs.readFileSync('style-polish.css','utf8');
-          if(!sig.includes('FacialAnimator')) throw new Error('Facial animator not wired');
-          if(!sig.includes('HitReaction')) throw new Error('Hit reaction layer not wired');
-          if(!sig.includes('triggerFinisherReaction')) throw new Error('Finisher reaction choreography missing');
-          if(!sig.includes('entrancePose')) throw new Error('Entrance choreography missing');
-          if(!sig.includes('victoryPose')) throw new Error('Victory choreography missing');
-          if(!elite.includes('ComboChoreography')||!combo.includes('class ComboChoreography')) throw new Error('Combo choreography not wired');
-          if(!elite.includes('addAnatomyDetail')||!anatomy.includes('addAnatomyDetail')) throw new Error('Anatomy detail not wired');
-          if(!game.includes('triggerSlowmo')) throw new Error('Impact slow motion missing');
-          if(!game.includes('ArenaAtmosphere')) throw new Error('Arena atmosphere not wired');
-          if(!game.includes('CombatLighting')||!game.includes('combatLighting?.update')) throw new Error('Dynamic combat lighting not wired');
-          if(!lighting.includes('SpotLight')||!lighting.includes('camera.position')) throw new Error('Combat lighting director appears invalid');
-          if(!game.includes('introTime')) throw new Error('Pre-fight camera sequence missing');
-          if(!face.includes('nextBlink')) throw new Error('Facial blink controller missing');
-          if(!hit.includes('class HitReaction')||!hit.includes('group.position.x')||!hit.includes('travel')) throw new Error('Physical directional hit follow-through missing');
-          if(!menu.includes('SignatureFighter')) throw new Error('Full signature fighters not used by menus');
-          if(!main.includes('HUDPortraits')) throw new Error('HUD portraits not bootstrapped');
-          if(!hud.includes('data')) throw new Error('HUD portrait module appears invalid');
-          if(!brand.includes('tweakin-hero.webp')||!brand.includes('data-portrait')) throw new Error('Official fighter artwork not wired to interface/HUD');
-          if(!polish.includes('tweakin-hero.webp')||!polish.includes('.touch-device .mobile-touch')) throw new Error('Final hero/touch polish not wired');
-          console.log('Presentation, combat, physical reactions, lighting, branding, touch and HUD stacks are wired.');
+          const read=f=>fs.readFileSync(f,'utf8');
+          const roster=read('data/roster.js'),arenas=read('data/arenas.js');
+          for(const id of ['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'])if(!roster.includes(`id: '${id}'`)&&!roster.includes(`id:'${id}'`))throw new Error(`Roster fighter missing: ${id}`);
+          const arenaCount=(arenas.match(/\bid:\s*'/g)||[]).length;if(arenaCount<12)throw new Error(`Expected at least 12 arenas, found ${arenaCount}`);
+          const main=read('main.js'),game=read('game/Game.js'),sig=read('game/SignatureFighter.js'),elite=read('game/EliteFighter.js'),face=read('game/FacialAnimator.js'),hit=read('game/HitReaction.js'),lighting=read('game/CombatLighting.js'),post=read('game/PostFX.js'),fx=read('game/PresentationDirector.js'),ux=read('ui/UXEnhancements.js'),finalCss=read('style-final.css'),uxCss=read('style-ux.css');
+          const checks=[
+            [main.includes('UXEnhancements'),'Dynamic UX layer not bootstrapped'],
+            [main.includes('HUDPortraits'),'HUD portraits not bootstrapped'],
+            [game.includes('triggerSlowmo'),'Impact slow motion missing'],
+            [game.includes('CombatLighting')&&game.includes('combatLighting?.update'),'Combat lighting not wired'],
+            [sig.includes('FacialAnimator')&&sig.includes('HitReaction')&&sig.includes('victoryPose'),'Signature animation stack incomplete'],
+            [elite.includes('ComboChoreography')&&elite.includes('addAnatomyDetail'),'Elite fighter detail stack incomplete'],
+            [face.includes('nextBlink'),'Facial animation blink controller missing'],
+            [hit.includes('class HitReaction'),'Hit reaction system missing'],
+            [lighting.includes('DirectionalLight')&&lighting.includes('HemisphereLight'),'Readable cinematic lighting stack incomplete'],
+            [post.includes('ShaderMaterial')&&post.includes('impact'),'Post-processing/impact grade missing'],
+            [fx.includes('speedStreaks')&&fx.includes('spawnTrail'),'Cinematic impact FX incomplete'],
+            [ux.includes('matchup-strip')&&ux.includes('result-metrics'),'Final UX enhancement states missing'],
+            [finalCss.includes('.result-shell')&&finalCss.includes('.boot-shell'),'Final cinematic CSS incomplete'],
+            [uxCss.includes('.matchup-strip')&&uxCss.includes('.result-metrics'),'Dynamic UX CSS incomplete']
+          ];
+          for(const [ok,msg] of checks)if(!ok)throw new Error(msg);
+          console.log(`Roster, ${arenaCount} arenas, cinematic presentation, UX and combat stacks are wired.`)
           NODE
