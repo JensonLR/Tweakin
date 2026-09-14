@@ -52,9 +52,10 @@ jobs:
               page.on('pageerror',e=>report.browserErrors.push(`mobile pageerror: ${e.message}`));
               page.on('console',m=>{if(m.type()==='error')report.browserErrors.push(`mobile console: ${m.text()}`)});
               await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
-              await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__,null,{timeout:30000});
+              await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__&&window.__TWEAKIN_UX__,null,{timeout:30000});
               assert(await page.locator('[data-nav="battle"]').isVisible(),'Battle mode not visible on mobile');
               assert(await page.locator('.brand-word').isVisible(),'Brand mark not visible on mobile');
+              assert(await page.locator('.menu-statusline').isVisible(),'Final menu UX statusline missing');
               await page.screenshot({path:'qa-artifacts/mobile-menu.png',fullPage:true});
 
               report.stage='mobile-battle-setup';
@@ -62,6 +63,9 @@ jobs:
               await page.waitForSelector('#battle-start',{state:'visible',timeout:10000});
               assert(await page.locator('[data-fighter="trump"]').first().isVisible(),'Trump selection card missing');
               assert(await page.locator('[data-fighter="gigachad"]').first().isVisible(),'Gigachad selection card missing');
+              await page.waitForSelector('.matchup-strip',{state:'visible',timeout:5000});
+              assert((await page.locator('.matchup-strip').innerText()).includes('TRUMP'),'Matchup strip does not reflect player');
+              assert((await page.locator('.matchup-strip').innerText()).includes('GIGACHAD'),'Matchup strip does not reflect opponent');
               await page.screenshot({path:'qa-artifacts/mobile-battle-setup.png',fullPage:true});
 
               report.stage='mobile-portrait-combat';
@@ -99,7 +103,8 @@ jobs:
               dpage.on('pageerror',e=>report.browserErrors.push(`desktop pageerror: ${e.message}`));
               dpage.on('console',m=>{if(m.type()==='error')report.browserErrors.push(`desktop console: ${m.text()}`)});
               await dpage.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
-              await dpage.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_SHOWCASE__,null,{timeout:30000});
+              await dpage.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_SHOWCASE__&&window.__TWEAKIN_UX__,null,{timeout:30000});
+              assert(await dpage.locator('.menu-statusline').isVisible(),'Desktop final menu UX missing');
               await dpage.screenshot({path:'qa-artifacts/desktop-menu.png'});
 
               report.stage='desktop-roster';
@@ -116,7 +121,7 @@ jobs:
               await desktop.close();
               report.stage='complete';write();
               if(report.browserErrors.length)throw new Error(report.browserErrors.join('\n'));
-              console.log('Browser QA passed: deterministic Trump vs Gigachad battle, touch input, portrait/landscape framing, desktop menu and fighter viewer.');
+              console.log('Browser QA passed: final UX layer, deterministic Trump vs Gigachad battle, touch input, portrait/landscape framing, desktop menu and fighter viewer.');
             } finally {
               write();
               await browser.close();
