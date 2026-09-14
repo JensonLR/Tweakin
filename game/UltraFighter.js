@@ -10,10 +10,10 @@ export class UltraFighter extends DetailedFighter{
   constructor(def,slot){super(def,slot);this.attackSerial=0;this.attackSide=1;this.poseClock=0;this.idlePhase=(slot+1)*1.73;applyFighterSurface(this.group,def);}
   setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting){this.attackSerial++;this.attackSide=this.attackSerial%2?1:-1}}
   animate(dt,input){
-    super.animate(dt,input);this.poseClock+=dt;
-    if(this.state==='Neutral'||this.state==='Block')this.idlePolish();
-    if(this.state==='Attack'&&DUR[this.attackType])this.attackChoreography();
-    if(this.state==='Move'||this.state==='Run')this.locomotionPolish();
+    super.animate(dt,input);this.poseClock+=dt;const ownsMotion=!!this.fallbackMotion;
+    if(!ownsMotion&&(this.state==='Neutral'||this.state==='Block'))this.idlePolish();
+    if(!ownsMotion&&this.state==='Attack'&&DUR[this.attackType])this.attackChoreography();
+    if(!ownsMotion&&(this.state==='Move'||this.state==='Run'))this.locomotionPolish();
     if(this.state==='Knockdown'||this.state==='Ground'||this.state==='GetUp'||this.state==='KO')this.groundPolish();
   }
   idlePolish(){
