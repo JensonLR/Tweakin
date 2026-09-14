@@ -3,6 +3,7 @@ import { FacialAnimator } from './FacialAnimator.js';
 import { HitReaction } from './HitReaction.js';
 import { addRigPolish } from './RigPolish.js';
 import { applySilhouetteFix } from './SilhouetteFix.js';
+import { applyHumanProportions } from './HumanProportionFix.js';
 import { ImportedCombatVisual } from './ImportedCombatVisual.js';
 import { FallbackMotion } from './FallbackMotion.js';
 
@@ -14,6 +15,7 @@ export class SignatureFighter extends EliteFighter{
   constructor(def,slot){
     super(def,slot);
     applySilhouetteFix(this);
+    applyHumanProportions(this);
     addRigPolish(this);
     this.specialIndex=-1;
     this.metrics=freshMetrics();
