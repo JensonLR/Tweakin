@@ -4,13 +4,14 @@ import { HitReaction } from './HitReaction.js';
 import { ComboChoreography } from './ComboChoreography.js';
 import { addRigPolish } from './RigPolish.js';
 import { applySilhouetteFix } from './SilhouetteFix.js';
+import { ImportedCombatVisual } from './ImportedCombatVisual.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
 const clamp=x=>Math.max(0,Math.min(1,x));
 const freshMetrics=()=>({damage:0,hits:0,heavyHits:0,specialHits:0,weaponHits:0,blocks:0,parries:0,evades:0,bestCombo:0,knockdowns:0,environmentHits:0,specials:0,weapons:0});
 
 export class SignatureFighter extends EliteFighter{
-  constructor(def,slot){super(def,slot);applySilhouetteFix(this);addRigPolish(this);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);this.hitReaction=new HitReaction(this);this.comboChoreo=new ComboChoreography(this);this.finisherReaction=0;this.finisherStyle=0;this.finisherSource='';this.introPose=-1;}
+  constructor(def,slot){super(def,slot);applySilhouetteFix(this);addRigPolish(this);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);this.hitReaction=new HitReaction(this);this.comboChoreo=new ComboChoreography(this);this.finisherReaction=0;this.finisherStyle=0;this.finisherSource='';this.introPose=-1;this.importedVisual=new ImportedCombatVisual(this);}
   setIntroPose(progress=-1){this.introPose=progress<0?-1:clamp(progress)}
   setState(s,move=''){
     const startingAttack=s==='Attack'&&move&&this.state!=='Attack';
@@ -18,7 +19,7 @@ export class SignatureFighter extends EliteFighter{
     else if(startingAttack)this.comboChoreo?.start(move);
     super.setState(s,move);
   }
-  update(dt,input,target,arena){const ev=super.update(dt,input,target,arena);this.finisherReaction=Math.max(0,this.finisherReaction-dt);this.hitReaction?.update(dt);this.comboChoreo?.update(dt);this.facial?.update(dt,target);return ev}
+  update(dt,input,target,arena){const ev=super.update(dt,input,target,arena);this.finisherReaction=Math.max(0,this.finisherReaction-dt);this.hitReaction?.update(dt);this.comboChoreo?.update(dt);this.facial?.update(dt,target);this.importedVisual?.update(dt);return ev}
   triggerFinisherReaction(style=0,source=''){this.finisherReaction=1.18;this.finisherStyle=style||0;this.finisherSource=source||'';}
   currentFinisher(){const fs=this.def.finishers||[];return fs[this.specialIndex<0?0:this.specialIndex%Math.max(1,fs.length)]||fs[0]||{name:'Signature',power:36}}
   attackDamage(kind){if(kind==='special'){const f=this.currentFinisher();return f.power*(.8+this.def.stats.upperBody/320)}return super.attackDamage(kind)*this.comboChoreo.multiplier(kind)}
