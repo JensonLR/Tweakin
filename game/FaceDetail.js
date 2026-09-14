@@ -3,50 +3,37 @@ import { THREE } from '../vendor/three.js';
 const std=(color,rough=.68,metal=.02)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
 const add=(p,g,m,pos=[0,0,0],rot=[0,0,0],scale=[1,1,1])=>{const x=new THREE.Mesh(g,m);x.position.set(...pos);x.rotation.set(...rot);x.scale.set(...scale);x.castShadow=true;p.add(x);return x};
 
-export function addFaceDetail(fighter){
-  const d=fighter.def,id=d.id,h=fighter.head;if(!h)return;
-  const rig={eyes:[],pupils:[],lids:[],brows:[],mouth:null,jaw:null,cheeks:[]};fighter.faceRig=rig;
+export function addFaceDetail(f){
+  const d=f.def,id=d.id,h=f.head;if(!h||f.faceDetailAdded)return;
+  const rig={eyes:[],pupils:[],lids:[],brows:[],mouth:null,jaw:null,cheeks:[]};f.faceRig=rig;
+  const skin=std(d.palette.skin,id==='greek'?.94:.63),dark=std(id==='greek'?0x8d887f:0x21191a,.78),white=std(id==='greek'?0xd6d0c5:0xe7e2dc,.46),iris=std(id==='agarthan'?0x8ffcff:id==='floyd'?0x35241d:0x536977,.42,.03);
   if(id==='wojak'){
-    const dark=std(0x202023,.82);for(const sx of[-1,1]){const e=add(h,new THREE.SphereGeometry(.029,10,7),dark,[sx*.1,.04,.304]);rig.eyes.push(e);rig.pupils.push(e)}
-    rig.mouth=add(h,new THREE.TorusGeometry(.095,.012,6,18,Math.PI),dark,[0,-.13,.305],[0,0,Math.PI]);rig.jaw=h;fighter.faceDetailAdded=true;return;
+    for(const sx of[-1,1]){const e=add(h,new THREE.SphereGeometry(.018,8,6),dark,[sx*.082,.035,.278],[0,0,0],[1,.78,.55]);rig.eyes.push(e);rig.pupils.push(e)}
+    rig.mouth=add(h,new THREE.TorusGeometry(.072,.009,6,18,Math.PI),dark,[0,-.105,.282],[0,0,Math.PI]);rig.jaw=h;f.faceDetailAdded=true;return;
   }
-  const skin=std(d.palette.skin,id==='greek'?.92:.61),white=std(id==='greek'?0xd8d2c6:0xeee7df,.38),dark=std(id==='greek'?0x8c877e:0x171317,.76),iris=std(id==='agarthan'?0x8ffcff:id==='floyd'?0x35241d:0x56707d,.40,.05),catchlight=std(0xffffff,.18);
-  // The old Gigachad base used a literal cube as the skull. Hide only that base primitive and replace it with a broad, rounded facial shell.
-  if(id==='gigachad'){
-    for(const child of h.children){if(child?.geometry?.type==='BoxGeometry'&&Math.abs(child.position.x)<.001&&Math.abs(child.position.y)<.001&&Math.abs(child.position.z)<.001)child.visible=false;}
-    add(h,new THREE.SphereGeometry(.335,18,13),skin,[0,.005,0],[0,0,0],[1.04,1.12,.90]);
-    add(h,new THREE.SphereGeometry(.245,16,11),skin,[0,-.13,.055],[0,0,0],[1.18,.80,.94]);
-  }
-  const eyeY=id==='gigachad'?.08:id==='trump'?.06:.065,eyeX=id==='gigachad'?.118:id==='netanyahu'?.102:.105,front=.322;
+  const eyeY=id==='gigachad'?.052:.045,eyeX=id==='gigachad'?.095:.088,front=.273;
   for(const sx of[-1,1]){
-    const eye=add(h,new THREE.SphereGeometry(.054,14,9),white,[sx*eyeX,eyeY,front],[0,0,0],[1.18,.60,.48]);rig.eyes.push(eye);
-    const pupil=add(h,new THREE.SphereGeometry(.025,12,8),iris,[sx*eyeX,eyeY,front+.041],[0,0,0],[.92,.78,.32]);rig.pupils.push(pupil);
-    add(h,new THREE.SphereGeometry(.011,8,6),dark,[sx*eyeX,eyeY,front+.059],[0,0,0],[1,.95,.3]);
-    add(h,new THREE.SphereGeometry(.006,7,5),catchlight,[sx*eyeX-.007,eyeY+.011,front+.066],[0,0,0],[1,.8,.28]);
-    const lid=add(h,new THREE.BoxGeometry(.128,.017,.024),skin,[sx*eyeX,eyeY+.044,front+.018],[0,0,sx*.045]);lid.scale.y=.78;rig.lids.push(lid);
-    add(h,new THREE.BoxGeometry(.12,.010,.018),skin,[sx*eyeX,eyeY-.043,front+.017],[0,0,-sx*.025]);
+    const eye=add(h,new THREE.SphereGeometry(.034,12,8),white,[sx*eyeX,eyeY,front],[0,0,0],[1.28,.58,.42]);rig.eyes.push(eye);
+    const pupil=add(h,new THREE.SphereGeometry(.012,9,7),iris,[sx*eyeX,eyeY,front+.027],[0,0,0],[1,.92,.42]);rig.pupils.push(pupil);
+    const lid=add(h,new THREE.BoxGeometry(.082,.010,.012),skin,[sx*eyeX,eyeY+.029,front+.006],[0,0,sx*.035]);rig.lids.push(lid);
   }
-  const jawW=id==='gigachad'?.29:id==='floyd'?.25:id==='trump'?.235:.22,jawY=id==='gigachad'?.105:.09;
-  rig.jaw=add(h,new THREE.BoxGeometry(jawW,jawY,.12),skin,[0,-.19,.12],[0,0,0],[1,.74,.88]);
-  add(h,new THREE.SphereGeometry(id==='gigachad'?.083:.068,12,8),skin,[0,-.235,.20],[0,0,0],[1.0,.65,.78]);
-  add(h,new THREE.BoxGeometry(.07,.16,.065),skin,[0,.015,.285],[.06,0,0],[.72,1,.72]);
-  add(h,new THREE.SphereGeometry(.055,11,8),skin,[0,-.075,.332],[0,0,0],[.82,.68,.72]);
-  for(const sx of[-1,1]){
-    rig.cheeks.push(add(h,new THREE.SphereGeometry(.095,10,8),skin,[sx*.145,-.035,.275],[0,0,0],[1,.62,.48]));
-    add(h,new THREE.SphereGeometry(.05,9,7),skin,[sx*.285,-.015,.04],[0,0,0],[.42,.9,.52]);
-  }
-  const lip=std(id==='greek'?0xa9a49b:id==='floyd'?0x4c2f28:0x6f4440,.72);rig.mouth=add(h,new THREE.BoxGeometry(id==='gigachad'?.16:.135,.023,.022),lip,[0,-.158,.335],[0,0,0],[1,.70,1]);rig.mouth.rotation.z=id==='trump'?.025:id==='netanyahu'?-.012:0;
-  add(h,new THREE.BoxGeometry(id==='gigachad'?.15:.125,.009,.018),dark,[0,-.166,.342]);
+  // Nose bridge + tip stay close to the skull to avoid the toy-face silhouette.
+  add(h,new THREE.CapsuleGeometry(.025,.075,5,8),skin,[0,-.005,.266],[Math.PI/2,0,0],[.78,1,.72]);
+  add(h,new THREE.SphereGeometry(.030,9,7),skin,[0,-.055,.292],[0,0,0],[.88,.70,.72]);
+  for(const sx of[-1,1])add(h,new THREE.SphereGeometry(.038,9,7),skin,[sx*.235,-.01,.015],[0,0,0],[.55,1,.62]);
+  const jawW=id==='gigachad'?.185:id==='floyd'?.165:.145;
+  rig.jaw=add(h,new THREE.CapsuleGeometry(jawW,.055,6,10),skin,[0,-.145,.015],[0,0,Math.PI/2],[1,.70,.72]);
+  const lip=std(id==='greek'?0xa39e95:id==='floyd'?0x4b312b:0x704842,.76);rig.mouth=add(h,new THREE.BoxGeometry(id==='gigachad'?.12:.10,.012,.010),lip,[0,-.112,.284]);
+  for(const sx of[-1,1])rig.cheeks.push(add(h,new THREE.SphereGeometry(.052,9,7),skin,[sx*.115,-.045,.238],[0,0,0],[1,.54,.42]));
+  const browColor=id==='trump'?0xbd965c:id==='netanyahu'?0x77736e:id==='kirk'?0x4f3328:id==='greek'?0xa9a398:0x2b211d,brow=std(browColor,.84);
+  for(const sx of[-1,1]){const b=add(h,new THREE.BoxGeometry(.088,.014,.014),brow,[sx*.088,.105,.264],[0,0,sx*(id==='gigachad'?.09:.035)]);rig.brows.push(b)}
   if(['floyd','gigachad'].includes(id)){
-    const beard=std(id==='floyd'?0x241813:0x171310,.88);add(h,new THREE.BoxGeometry(id==='gigachad'?.30:.30,.10,.15),beard,[0,-.205,.13],[0,0,0],[1,.72,1]);add(h,new THREE.BoxGeometry(.22,.035,.026),beard,[0,-.142,.318]);
+    const beard=std(id==='floyd'?0x241813:0x171310,.90);add(h,new THREE.CapsuleGeometry(id==='gigachad'?.14:.115,.045,6,10),beard,[0,-.17,.008],[0,0,Math.PI/2],[1,.70,.76]);add(h,new THREE.BoxGeometry(.16,.022,.016),beard,[0,-.105,.278]);
   }
-  const browColor=id==='trump'?0xc89d57:id==='netanyahu'?0x77736e:id==='kirk'?0x5b3a2a:id==='greek'?0xa9a398:0x2b211d;
-  const brow=std(browColor,.84);for(const sx of[-1,1]){const tilt=id==='gigachad'?.07:id==='trump'?.08:.035;rig.brows.push(add(h,new THREE.BoxGeometry(.125,.024,.032),brow,[sx*.105,.137,.31],[0,0,sx*tilt]));}
-  if(id==='trump')add(h,new THREE.BoxGeometry(.30,.028,.018),std(0xd3ab6b,.75),[.02,.31,.02],[0,0,-.12]);
   if(id==='agarthan'){
-    const glow=std(0xbfffff,.25,.12);glow.emissive=new THREE.Color(0x55ffff);glow.emissiveIntensity=1.5;for(const sx of[-1,1])add(h,new THREE.TorusGeometry(.057,.009,7,16),glow,[sx*eyeX,eyeY,front+.058],[0,0,0]);
+    const glow=std(0xc7ffff,.24,.08);glow.emissive=new THREE.Color(0x55ffff);glow.emissiveIntensity=1.15;for(const sx of[-1,1])add(h,new THREE.TorusGeometry(.030,.005,6,14),glow,[sx*eyeX,eyeY,front+.033]);
   }else if(id==='greek'){
-    const curls=std(0xc9c3b7,.95);for(let i=0;i<6;i++)add(h,new THREE.TorusGeometry(.05,.022,6,12),curls,[(i-2.5)*.09,.27+(i%2)*.04,.04],[Math.PI/2,0,(i-2.5)*.15]);
+    const curls=std(0xc8c2b7,.96);for(let i=0;i<5;i++)add(h,new THREE.TorusGeometry(.034,.014,6,10),curls,[(i-2)*.07,.23+(i%2)*.035,-.03],[Math.PI/2,0,(i-2)*.12]);
   }
-  fighter.faceDetailAdded=true;
+  f.faceDetailAdded=true;
 }
