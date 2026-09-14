@@ -14,17 +14,17 @@ export class PostFX{
         uniform sampler2D tDiffuse;uniform vec2 resolution;uniform float time;uniform float impact;uniform float cinematic;uniform float quality;
         float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
         vec3 grade(vec3 c){
-          c=max(c,0.0);c=(c-.5)*1.055+.5;
-          c*=vec3(1.035,1.005,.98);
-          float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,1.075);
-          c=pow(max(c,0.0),vec3(.975));
-          float hi=smoothstep(.62,1.0,max(max(c.r,c.g),c.b));c+=vec3(.055,.026,.008)*hi;
+          c=max(c,0.0);c=(c-.5)*1.025+.5;c+=vec3(.018,.020,.022);
+          c*=vec3(1.012,1.008,1.0);
+          float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,1.045);
+          c=pow(max(c,0.0),vec3(.985));
+          float hi=smoothstep(.68,1.0,max(max(c.r,c.g),c.b));c+=vec3(.028,.018,.010)*hi;
           return c;
         }
         void main(){
           vec2 uv=vUv,center=vec2(.5),from=uv-center;float dist=length(from);vec2 texel=1.0/resolution;
-          float punch=impact*impact,ca=(.20+impact*1.35+cinematic*.18)*quality;
-          vec2 radial=normalize(from+vec2(.00001))*texel*(1.0+dist*5.0)*punch*3.0;
+          float punch=impact*impact,ca=(.16+impact*1.1+cinematic*.14)*quality;
+          vec2 radial=normalize(from+vec2(.00001))*texel*(1.0+dist*5.0)*punch*2.5;
           float r=texture2D(tDiffuse,uv+vec2(texel.x*ca,0.)+radial).r;
           float g=texture2D(tDiffuse,uv).g;
           float b=texture2D(tDiffuse,uv-vec2(texel.x*ca,0.)-radial).b;
@@ -35,15 +35,15 @@ export class PostFX{
             vec3 e=texture2D(tDiffuse,uv+vec2(texel.x,0.)).rgb;
             vec3 w=texture2D(tDiffuse,uv-vec2(texel.x,0.)).rgb;
             vec3 blur=(n+s+e+w)*.25;
-            vec3 bright=max(blur-vec3(.68),0.0);
-            col+=bright*(.21+.24*cinematic)*quality;
-            col+=(base-blur)*(.075+.025*cinematic)*quality;
+            vec3 bright=max(blur-vec3(.72),0.0);
+            col+=bright*(.16+.18*cinematic)*quality;
+            col+=(base-blur)*(.06+.02*cinematic)*quality;
           }
           col=grade(col);
-          float vign=1.0-smoothstep(.40,.82,dist)*(.22+.10*cinematic);col*=vign;
-          float grain=(hash(uv*resolution+time*81.37)-.5)*(.012+.006*cinematic)*quality;col+=grain;
-          float flash=(1.0-smoothstep(0.0,.56,dist))*punch;col+=vec3(.16,.035,.018)*flash;
-          float gate=smoothstep(.0,.09,vUv.y)*smoothstep(.0,.09,1.0-vUv.y);col*=mix(.86,1.0,gate+(.15*(1.0-cinematic)));
+          float vign=1.0-smoothstep(.46,.88,dist)*(.13+.06*cinematic);col*=vign;
+          float grain=(hash(uv*resolution+time*81.37)-.5)*(.009+.004*cinematic)*quality;col+=grain;
+          float flash=(1.0-smoothstep(0.0,.56,dist))*punch;col+=vec3(.10,.032,.020)*flash;
+          float gate=smoothstep(.0,.07,vUv.y)*smoothstep(.0,.07,1.0-vUv.y);col*=mix(.94,1.0,gate+(.08*(1.0-cinematic)));
           gl_FragColor=vec4(col,1.0);
         }`
     });
