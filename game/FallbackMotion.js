@@ -1,104 +1,55 @@
 const clamp=v=>Math.max(0,Math.min(1,v));
 const smooth=t=>{t=clamp(t);return t*t*(3-2*t)};
-const easeOut=t=>1-Math.pow(1-clamp(t),3);
 const pulse=(p,a,b)=>{if(p<=a||p>=b)return 0;const x=(p-a)/(b-a);return Math.sin(Math.PI*x)};
 const phase=(p,a,b)=>smooth((p-a)/(b-a));
 const DUR={light:.34,heavy:.62,grapple:.72,special:2.35};
-
+const STYLE={
+  trump:{guard:.52,crouch:.02,bounce:.012,hip:.72,hand:.88,power:1.02},
+  netanyahu:{guard:.68,crouch:.035,bounce:.008,hip:.86,hand:.94,power:.90},
+  kirk:{guard:.78,crouch:.065,bounce:.035,hip:1.02,hand:1.05,power:.88},
+  floyd:{guard:.76,crouch:.055,bounce:.020,hip:.92,hand:.98,power:1.06},
+  wojak:{guard:.60,crouch:.045,bounce:.040,hip:1.12,hand:1.06,power:.86},
+  gigachad:{guard:.70,crouch:.04,bounce:.012,hip:.94,hand:.96,power:1.18},
+  agarthan:{guard:.82,crouch:.07,bounce:.028,hip:1.08,hand:1.08,power:.94},
+  greek:{guard:.58,crouch:.025,bounce:.006,hip:.78,hand:.88,power:1.12}
+};
 export class FallbackMotion{
-  constructor(f){this.f=f;this.clock=0;this.breath=0;}
+  constructor(f){this.f=f;this.clock=0;}
   update(dt){this.clock+=dt;}
-  apply(){
-    const f=this.f;
-    if(f.importedVisual?.ready)return;
-    this.idleAndLocomotion();
-    this.defence();
-    this.attack();
-  }
-  idleAndLocomotion(){
-    const f=this.f,t=this.clock,move=f.state==='Move'||f.state==='Run';
-    if(!['Attack','Stun','Knockdown','Ground','GetUp','KO','Victory'].includes(f.state)){
-      const breath=Math.sin(t*2.05+f.slot*.7),weight=Math.sin(t*.92+f.slot)*.5+.5;
-      f.torso.rotation.x+=breath*.018;
-      f.torso.rotation.z+=(weight-.5)*.022;
-      f.head.rotation.y+=Math.sin(t*.58+f.slot)*.028;
-      if(f.pelvis){f.pelvis.rotation.y+=(weight-.5)*.035;f.pelvis.position.y+=breath*.006;}
+  style(){return STYLE[this.f.def.id]||STYLE.netanyahu}
+  apply(){const f=this.f;if(f.importedVisual?.ready)return;this.stanceAndLocomotion();this.defence();this.attack();}
+  stanceAndLocomotion(){
+    const f=this.f,s=this.style(),t=this.clock,id=f.def.id,active=!['Attack','Stun','Knockdown','Ground','GetUp','KO','Victory'].includes(f.state),moving=f.state==='Move'||f.state==='Run';
+    if(active){
+      const breath=Math.sin(t*2.0+f.slot*.65),shift=Math.sin(t*.82+f.slot*.9),bounce=Math.abs(Math.sin(t*(id==='kirk'||id==='agarthan'?4.2:2.7)));
+      f.torso.rotation.x+=.025+s.crouch*.35+breath*.014;f.torso.rotation.y+=shift*.018*s.hip;f.torso.rotation.z+=shift*.010;f.head.rotation.y-=shift*.026;f.head.rotation.x+=.018;
+      if(f.pelvis){f.pelvis.rotation.x-=s.crouch*.65;f.pelvis.rotation.y-=shift*.035*s.hip;f.pelvis.position.y-=s.crouch*.05+bounce*s.bounce;}
+      const g=s.guard;f.leftArm.rotation.x-=.18*g;f.rightArm.rotation.x-=.20*g;f.leftArm.rotation.z-=.14*g;f.rightArm.rotation.z+=.14*g;f.leftFore.rotation.x-=.36*g;f.rightFore.rotation.x-=.38*g;
+      if(id==='trump'){f.rightArm.rotation.z+=.05;f.leftArm.rotation.z-=.025;}if(id==='gigachad'){f.leftArm.rotation.z-=.055;f.rightArm.rotation.z+=.055;f.torso.rotation.x-=.018;}if(id==='greek'){f.leftArm.rotation.z-=.04;f.rightArm.rotation.x+=.035;}if(id==='wojak'){f.head.rotation.z+=Math.sin(t*2.5)*.022;f.rightFore.rotation.z+=Math.sin(t*1.4)*.035;}
     }
-    if(move){
-      const run=f.state==='Run',freq=run?10.8:6.6,swing=Math.sin(t*freq),plant=Math.abs(Math.cos(t*freq));
-      f.leftLeg.rotation.x+=swing*(run?.23:.13);f.rightLeg.rotation.x-=swing*(run?.23:.13);
-      f.leftShin.rotation.x+=Math.max(0,-swing)*(run?.24:.13);f.rightShin.rotation.x+=Math.max(0,swing)*(run?.24:.13);
-      f.leftArm.rotation.x-=swing*(run?.18:.10);f.rightArm.rotation.x+=swing*(run?.18:.10);
-      f.torso.rotation.y+=swing*(run?.035:.022);f.torso.rotation.x+=run?.055:.018;
-      if(f.pelvis){f.pelvis.rotation.y-=swing*(run?.06:.038);f.pelvis.position.y-=plant*(run?.013:.008);}
-      f.head.rotation.y-=swing*.018;
-    }
+    if(!moving)return;
+    const run=f.state==='Run',freq=run?11.2:6.7,gait=Math.sin(t*freq),other=Math.sin(t*freq+Math.PI),plantL=Math.max(0,Math.cos(t*freq)),plantR=Math.max(0,-Math.cos(t*freq)),stride=(run?.48:.25)*(id==='kirk'||id==='agarthan'?1.08:id==='gigachad'||id==='floyd'?.92:1);
+    f.leftLeg.rotation.x+=gait*stride;f.rightLeg.rotation.x+=other*stride;f.leftShin.rotation.x+=Math.max(0,-gait)*(run?.50:.28);f.rightShin.rotation.x+=Math.max(0,-other)*(run?.50:.28);f.leftArm.rotation.x-=gait*(run?.30:.16);f.rightArm.rotation.x-=other*(run?.30:.16);f.leftFore.rotation.x-=Math.max(0,gait)*(run?.12:.06);f.rightFore.rotation.x-=Math.max(0,other)*(run?.12:.06);f.torso.rotation.y+=gait*(run?.065:.035);f.torso.rotation.x+=run?.085:.035;
+    if(f.pelvis){f.pelvis.rotation.y-=gait*(run?.11:.065);f.pelvis.position.y-=Math.max(plantL,plantR)*(run?.026:.014);f.pelvis.rotation.z+=gait*(run?.022:.012);}f.head.rotation.y-=gait*.024;f.head.rotation.z-=gait*.010;
   }
   defence(){
-    const f=this.f;
-    if(f.state==='Block'){
-      f.torso.rotation.x+=.075;f.head.rotation.x+=.045;
-      f.leftArm.rotation.z-=.14;f.rightArm.rotation.z+=.14;
-      f.leftFore.rotation.x-=.26;f.rightFore.rotation.x-=.26;
-      if(f.pelvis)f.pelvis.rotation.x-=.035;
-    }
-    if(f.parryWindow>0){
-      const q=clamp(f.parryWindow/.14);
-      f.torso.rotation.y+=(f.slot%2?-.13:.13)*(1-q);
-      f.leftFore.rotation.z-=.16*q;f.rightFore.rotation.z+=.16*q;
-      f.head.rotation.y-=f.torso.rotation.y*.22;
-    }
-    if(f.evadeTime>0){
-      const q=1-clamp(f.evadeTime/.26),b=Math.sin(Math.PI*q),side=f.slot%2?-1:1;
-      f.torso.rotation.z+=side*b*.18;f.torso.rotation.y-=side*b*.12;
-      if(f.pelvis)f.pelvis.rotation.z-=side*b*.09;
-      f.head.rotation.z-=side*b*.08;
-    }
+    const f=this.f;if(f.state==='Block'){f.torso.rotation.x+=.11;f.head.rotation.x+=.07;f.head.rotation.y+=.025;f.leftArm.rotation.x-=.22;f.rightArm.rotation.x-=.22;f.leftArm.rotation.z-=.24;f.rightArm.rotation.z+=.24;f.leftFore.rotation.x-=.52;f.rightFore.rotation.x-=.52;if(f.pelvis){f.pelvis.rotation.x-=.07;f.pelvis.position.y-=.022;}f.leftLeg.rotation.x+=.045;f.rightLeg.rotation.x+=.045;}
+    if(f.parryWindow>0){const q=1-clamp(f.parryWindow/.14),b=Math.sin(Math.PI*q),side=f.slot%2?-1:1;f.torso.rotation.y+=side*b*.24;f.head.rotation.y-=side*b*.10;const arm=side>0?f.rightFore:f.leftFore;arm.rotation.z+=side*b*.42;arm.rotation.x-=b*.22;if(f.pelvis)f.pelvis.rotation.y-=side*b*.12;}
+    if(f.evadeTime>0){const q=1-clamp(f.evadeTime/.26),b=Math.sin(Math.PI*q),side=f.slot%2?-1:1;f.torso.rotation.z+=side*b*.30;f.torso.rotation.y-=side*b*.22;f.head.rotation.z-=side*b*.13;if(f.pelvis){f.pelvis.rotation.z-=side*b*.18;f.pelvis.rotation.y+=side*b*.16;f.pelvis.position.y-=b*.025;}const lead=side>0?f.rightLeg:f.leftLeg,rear=side>0?f.leftLeg:f.rightLeg;lead.rotation.z+=side*b*.10;rear.rotation.x+=b*.12;}
   }
-  attack(){
-    const f=this.f,kind=f.attackType;
-    if(f.state!=='Attack'||!DUR[kind])return;
-    const p=clamp(f.stateTime/DUR[kind]),side=(f.signatureStep%2?1:-1);
-    if(kind==='light')this.light(p,side);
-    else if(kind==='heavy')this.heavy(p,side);
-    else if(kind==='grapple')this.grapple(p,side);
-    else this.special(p,side);
+  attack(){const f=this.f,kind=f.attackType;if(f.state!=='Attack'||!DUR[kind])return;const p=clamp(f.stateTime/DUR[kind]),side=f.signatureStep%2?1:-1,id=f.def.id;if(kind==='light')this.light(p,side,id);else if(kind==='heavy')this.heavy(p,side,id);else if(kind==='grapple')this.grapple(p,side,id);else this.special(p,side,id);}
+  light(p,side,id){
+    const f=this.f,s=this.style(),load=pulse(p,.00,.30),strike=pulse(p,.16,.56),recoil=pulse(p,.47,.84),guard=1-phase(p,.70,1),arm=side>0?f.rightArm:f.leftArm,fore=side>0?f.rightFore:f.leftFore,off=side>0?f.leftArm:f.rightArm,offFore=side>0?f.leftFore:f.rightFore,front=side>0?f.rightLeg:f.leftLeg,rear=side>0?f.leftLeg:f.rightLeg;
+    if((id==='kirk'||id==='agarthan')&&f.signatureStep%3===2){front.rotation.x-=strike*1.18;const shin=side>0?f.rightShin:f.leftShin;shin.rotation.x+=strike*.72;rear.rotation.x+=load*.13;f.torso.rotation.y-=side*strike*.30;f.torso.rotation.x+=strike*.09;off.rotation.z-=side*strike*.17;if(f.pelvis)f.pelvis.rotation.y+=side*strike*.32;return;}
+    f.torso.rotation.y-=side*load*.30*s.hip;f.torso.rotation.y+=side*strike*.52*s.hip;f.torso.rotation.x-=strike*.06;f.head.rotation.y+=side*load*.11;f.head.rotation.y-=side*strike*.10;arm.rotation.x+=load*.28;arm.rotation.x-=strike*.88*s.hand;arm.rotation.z+=side*(load*.18-strike*.16);fore.rotation.x-=strike*.60*s.hand;off.rotation.x-=.26*guard;offFore.rotation.x-=.34*guard;off.rotation.z-=side*.08*guard;rear.rotation.x+=load*.07;front.rotation.x-=strike*.035;
+    if(f.pelvis){f.pelvis.rotation.y+=side*(strike*.34-load*.18)*s.hip;f.pelvis.rotation.x-=strike*.035;f.pelvis.position.y-=load*.012;}if(id==='trump'){arm.rotation.z+=side*strike*.12;f.torso.rotation.y+=side*strike*.08;}if(id==='netanyahu'){fore.rotation.x-=strike*.11;f.head.rotation.y-=side*strike*.025;}if(id==='floyd'||id==='gigachad'){f.torso.rotation.x-=strike*.055;rear.rotation.x+=strike*.045;}if(id==='greek'){arm.rotation.z+=side*strike*.09;f.torso.rotation.x-=strike*.04;}if(id==='wojak'){f.head.rotation.z+=Math.sin(p*Math.PI*4)*strike*.05;arm.rotation.z+=side*Math.sin(p*Math.PI*2)*strike*.14;}arm.rotation.x+=recoil*.10;
   }
-  light(p,side){
-    const f=this.f,load=phase(p,0,.22)*(1-phase(p,.22,.42)),strike=phase(p,.20,.46)*(1-phase(p,.46,.72)),recover=phase(p,.66,1),snap=pulse(p,.18,.56);
-    f.torso.rotation.y-=side*load*.22;f.torso.rotation.y+=side*strike*.31;f.torso.rotation.x-=snap*.035;
-    f.head.rotation.y+=side*load*.08;f.head.rotation.y-=side*strike*.07;
-    const arm=side>0?f.rightArm:f.leftArm,fore=side>0?f.rightFore:f.leftFore,guard=side>0?f.leftArm:f.rightArm,guardFore=side>0?f.leftFore:f.rightFore;
-    arm.rotation.x+=load*.22;arm.rotation.x-=strike*.72;arm.rotation.z+=side*(load*.16-strike*.10);fore.rotation.x-=strike*.38;
-    guard.rotation.x-=.18*(1-recover);guardFore.rotation.x-=.24*(1-recover);
-    if(f.pelvis)f.pelvis.rotation.y+=side*(strike*.18-load*.10);
-    const rear=side>0?f.leftLeg:f.rightLeg;rear.rotation.x+=snap*.045;
+  heavy(p,side,id){
+    const f=this.f,s=this.style(),coil=pulse(p,.00,.42),drive=pulse(p,.24,.72),follow=pulse(p,.54,.94),front=side>0?f.rightLeg:f.leftLeg,rear=side>0?f.leftLeg:f.rightLeg;
+    if((id==='kirk'||id==='agarthan')&&f.signatureStep%2===0){rear.rotation.x+=coil*.18;front.rotation.x-=drive*1.44;const shin=side>0?f.rightShin:f.leftShin;shin.rotation.x+=drive*.48;f.torso.rotation.y-=side*coil*.28;f.torso.rotation.y+=side*drive*.54;f.torso.rotation.x+=drive*.16;if(f.pelvis){f.pelvis.rotation.y+=side*drive*.44;f.pelvis.position.y-=coil*.025;}f.leftArm.rotation.z-=drive*.16;f.rightArm.rotation.z+=drive*.16;return;}
+    const arm=side>0?f.rightArm:f.leftArm,fore=side>0?f.rightFore:f.leftFore,off=side>0?f.leftArm:f.rightArm;f.torso.rotation.y-=side*coil*.64*s.hip;f.torso.rotation.y+=side*drive*.94*s.hip;f.torso.rotation.x+=coil*.16-drive*.22+follow*.08;f.head.rotation.y+=side*coil*.18;f.head.rotation.y-=side*drive*.17;f.head.rotation.x+=drive*.045;arm.rotation.x+=coil*.48;arm.rotation.x-=drive*1.28*s.hand;arm.rotation.z+=side*(coil*.46-drive*.34);fore.rotation.x-=drive*.72*s.hand;off.rotation.x-=.34*(1-phase(p,.78,1));off.rotation.z-=side*.15*(1-phase(p,.78,1));rear.rotation.x+=coil*.12;front.rotation.x-=drive*.09;
+    if(f.pelvis){f.pelvis.rotation.y+=side*(drive*.55-coil*.32)*s.hip;f.pelvis.rotation.x-=drive*.10;f.pelvis.position.y-=coil*.025;}if(id==='trump'){arm.rotation.z+=side*drive*.20;f.torso.rotation.x+=drive*.04;}if(id==='floyd'||id==='gigachad'){f.torso.rotation.x-=drive*.10*s.power;rear.rotation.x+=drive*.07;}if(id==='greek'){arm.rotation.x-=drive*.16;off.rotation.x-=drive*.13;}if(id==='wojak'){f.torso.rotation.z+=Math.sin(p*Math.PI*2)*drive*.10;f.head.rotation.z-=Math.sin(p*Math.PI*3)*drive*.06;}
   }
-  heavy(p,side){
-    const f=this.f,load=phase(p,0,.32)*(1-phase(p,.32,.5)),drive=phase(p,.27,.58)*(1-phase(p,.58,.78)),follow=pulse(p,.45,.9),recover=phase(p,.78,1);
-    f.torso.rotation.y-=side*load*.48;f.torso.rotation.y+=side*drive*.67;f.torso.rotation.x+=load*.10-drive*.15+follow*.05;
-    f.head.rotation.y+=side*load*.16;f.head.rotation.y-=side*drive*.12;f.head.rotation.x+=drive*.035;
-    const arm=side>0?f.rightArm:f.leftArm,fore=side>0?f.rightFore:f.leftFore,guard=side>0?f.leftArm:f.rightArm;
-    arm.rotation.x+=load*.38;arm.rotation.x-=drive*1.02;arm.rotation.z+=side*(load*.31-drive*.24);fore.rotation.x-=drive*.58;
-    guard.rotation.x-=.30*(1-recover);guard.rotation.z-=side*.12*(1-recover);
-    if(f.pelvis){f.pelvis.rotation.y+=side*(drive*.38-load*.25);f.pelvis.rotation.x-=drive*.07;}
-    const front=side>0?f.rightLeg:f.leftLeg,rear=side>0?f.leftLeg:f.rightLeg;front.rotation.x-=drive*.06;rear.rotation.x+=load*.08;
-  }
-  grapple(p,side){
-    const f=this.f,level=phase(p,0,.24)*(1-phase(p,.24,.45)),reach=phase(p,.18,.55)*(1-phase(p,.55,.82)),recover=phase(p,.76,1);
-    f.torso.rotation.x+=level*.13+reach*.12;f.torso.rotation.y+=side*reach*.10;
-    f.leftArm.rotation.x-=reach*.68;f.rightArm.rotation.x-=reach*.68;f.leftArm.rotation.z-=reach*.25;f.rightArm.rotation.z+=reach*.25;
-    f.leftFore.rotation.x-=reach*.42;f.rightFore.rotation.x-=reach*.42;
-    if(f.pelvis){f.pelvis.rotation.x-=level*.09;f.pelvis.position.y-=level*.025;}
-    f.leftLeg.rotation.x+=level*.08;f.rightLeg.rotation.x+=level*.08;
-    f.head.rotation.x+=reach*.03*(1-recover);
-  }
-  special(p,side){
-    const f=this.f,anticipate=phase(p,0,.18)*(1-phase(p,.18,.28)),surge=pulse(p,.20,.63),finish=pulse(p,.56,.92);
-    f.torso.rotation.y-=side*anticipate*.42;f.torso.rotation.y+=side*surge*.52;f.torso.rotation.x-=surge*.10+finish*.06;
-    f.head.rotation.y+=side*anticipate*.13;f.head.rotation.x-=finish*.045;
-    if(f.pelvis){f.pelvis.rotation.y+=side*(surge*.28-anticipate*.20);f.pelvis.position.y-=anticipate*.018;}
-    f.leftArm.rotation.x-=surge*.24;f.rightArm.rotation.x-=surge*.48;f.leftArm.rotation.z-=finish*.18;f.rightArm.rotation.z+=finish*.18;
-    f.leftLeg.rotation.x+=anticipate*.08;f.rightLeg.rotation.x-=surge*.10;
-  }
+  grapple(p,side,id){const f=this.f,drop=pulse(p,.00,.34),reach=pulse(p,.18,.62),clinch=pulse(p,.44,.86),finish=phase(p,.68,1);f.torso.rotation.x+=drop*.18+reach*.15;f.torso.rotation.y+=side*(reach*.14-clinch*.22);f.head.rotation.x+=reach*.045;f.leftArm.rotation.x-=reach*.82;f.rightArm.rotation.x-=reach*.82;f.leftArm.rotation.z-=reach*.34;f.rightArm.rotation.z+=reach*.34;f.leftFore.rotation.x-=reach*.58;f.rightFore.rotation.x-=reach*.58;f.leftFore.rotation.z+=clinch*.12;f.rightFore.rotation.z-=clinch*.12;if(f.pelvis){f.pelvis.rotation.x-=drop*.14;f.pelvis.position.y-=drop*.045;f.pelvis.rotation.y+=side*clinch*.18;}f.leftLeg.rotation.x+=drop*.11;f.rightLeg.rotation.x+=drop*.11;if(id==='floyd'||id==='gigachad'){f.torso.rotation.x+=clinch*.10;f.leftArm.rotation.z-=clinch*.10;f.rightArm.rotation.z+=clinch*.10;}if(id==='greek'){f.torso.rotation.y+=side*clinch*.18;f.leftLeg.rotation.x+=clinch*.08;}if(id==='wojak')f.head.rotation.z+=Math.sin(p*Math.PI*3)*reach*.06;if(finish>.4)f.torso.rotation.x-=finish*.05;}
+  special(p,side,id){const f=this.f,anticipate=pulse(p,.00,.24),burst=pulse(p,.16,.58),impact=pulse(p,.48,.78),recover=phase(p,.72,1);if(f.pelvis){f.pelvis.position.y-=anticipate*.035;f.pelvis.rotation.y-=side*anticipate*.30;f.pelvis.rotation.y+=side*burst*.48;}f.torso.rotation.y-=side*anticipate*.56;f.torso.rotation.y+=side*burst*.74;f.torso.rotation.x+=anticipate*.12-burst*.16-impact*.08;f.head.rotation.y+=side*anticipate*.17;f.head.rotation.y-=side*burst*.14;f.head.rotation.x-=impact*.05;if(id==='gigachad'){f.rightArm.rotation.x-=burst*1.15;f.leftArm.rotation.x-=burst*.42;f.rightFore.rotation.x-=impact*.55;f.leftLeg.rotation.x+=anticipate*.11;}else if(id==='floyd'){f.leftArm.rotation.x-=burst*.76;f.rightArm.rotation.x-=burst*1.05;f.leftFore.rotation.x-=impact*.30;f.rightFore.rotation.x-=impact*.44;}else if(id==='kirk'||id==='agarthan'){f.rightLeg.rotation.x-=burst*1.45;f.rightShin.rotation.x+=burst*.66;f.leftArm.rotation.z-=impact*.24;f.torso.rotation.y-=side*impact*.28;}else if(id==='greek'){f.leftArm.rotation.x-=burst*.92;f.rightArm.rotation.x-=burst*.92;f.leftArm.rotation.z-=impact*.30;f.rightArm.rotation.z+=impact*.30;}else if(id==='trump'){f.rightArm.rotation.x-=burst*.88;f.rightArm.rotation.z+=side*burst*.38;f.leftFore.rotation.x-=impact*.36;}else if(id==='netanyahu'){f.rightArm.rotation.x-=burst*.84;f.leftArm.rotation.x-=burst*.38;f.rightFore.rotation.z+=side*impact*.24;}else{f.leftArm.rotation.z-=Math.sin(p*Math.PI*2)*burst*.42;f.rightArm.rotation.z+=Math.sin(p*Math.PI*3)*burst*.48;f.head.rotation.z+=Math.sin(p*Math.PI*5)*burst*.09;}f.leftLeg.rotation.x+=anticipate*.08;f.rightLeg.rotation.x-=burst*.10;if(recover>.2)f.torso.rotation.x+=recover*.035;}
 }
