@@ -4,7 +4,6 @@ import { applyParametricLikeness } from './ParametricLikeness.js';
 import { applyBodyLikeness } from './BodyLikeness.js';
 import { applySilhouetteFix } from './SilhouetteFix.js';
 import { addCharacterDetail } from './CharacterDetail.js';
-import { addAnatomyDetail } from './AnatomyDetail.js';
 import { CombatWear } from './CombatWear.js';
 import { ComboChoreography } from './ComboChoreography.js';
 import { applyFighterSurface } from './SurfaceDetail.js';
@@ -16,7 +15,7 @@ export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;this.signatureStep=0;
-    applySilhouetteFix(this);applyBodyLikeness(this);applyParametricLikeness(this);addCharacterDetail(this);addAnatomyDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);this.comboChoreo=new ComboChoreography(this);
+    applySilhouetteFix(this);applyBodyLikeness(this);applyParametricLikeness(this);addCharacterDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);this.comboChoreo=new ComboChoreography(this);
   }
   setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting){this.signatureStep=(this.signatureStep+1)%4;this.comboChoreo?.start(move)}}
   attackDamage(kind){return super.attackDamage(kind)*(this.comboChoreo?.multiplier(kind)??1)}
