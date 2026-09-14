@@ -4,84 +4,20 @@ const mat=(color,rough=.62,metal=.01)=>new THREE.MeshPhysicalMaterial({color,rou
 const add=(p,g,m,pos=[0,0,0],rot=[0,0,0],scale=[1,1,1])=>{const x=new THREE.Mesh(g,m);x.position.set(...pos);x.rotation.set(...rot);x.scale.set(...scale);x.castShadow=true;x.receiveShadow=true;p.add(x);return x};
 
 const SPECS={
-  trump:{skull:[1.04,1.07,.94],skullPos:[0,.008,0],jaw:[.166,.060,.74],chin:[.092,.050,.80],cheekX:.120,cheekY:-.038,cheekScale:[1.08,.64,.54],browY:.108,eyeX:.090,eyeY:.044,nose:[.030,.090,.74],noseY:-.012,mouthY:-.116,mouthW:.108,neck:[1.08,.96,1.04],hair:0xd7ad67},
-  netanyahu:{skull:[1.03,1.03,.96],skullPos:[0,.006,0],jaw:[.160,.058,.76],chin:[.086,.047,.78],cheekX:.116,cheekY:-.036,cheekScale:[1.03,.62,.54],browY:.110,eyeX:.089,eyeY:.047,nose:[.031,.080,.76],noseY:-.014,mouthY:-.114,mouthW:.101,neck:[1.03,.98,1.02],hair:0xaaa7a3},
-  kirk:{skull:[1.10,1.00,.95],skullPos:[0,.002,0],jaw:[.173,.057,.78],chin:[.088,.046,.76],cheekX:.124,cheekY:-.034,cheekScale:[1.15,.66,.55],browY:.106,eyeX:.094,eyeY:.044,nose:[.029,.074,.72],noseY:-.013,mouthY:-.113,mouthW:.104,neck:[1.04,.97,1.03],hair:0x3c2b23},
-  floyd:{skull:[.99,1.11,.94],skullPos:[0,.014,0],jaw:[.168,.068,.80],chin:[.096,.060,.84],cheekX:.118,cheekY:-.032,cheekScale:[1.02,.72,.58],browY:.115,eyeX:.088,eyeY:.052,nose:[.033,.102,.78],noseY:-.015,mouthY:-.124,mouthW:.111,neck:[1.12,1.02,1.08],hair:0x171412},
-  gigachad:{skull:[1.08,1.08,.97],skullPos:[0,.005,0],jaw:[.205,.080,.86],chin:[.120,.070,.90],cheekX:.132,cheekY:-.025,cheekScale:[1.22,.74,.62],browY:.116,eyeX:.098,eyeY:.054,nose:[.034,.090,.78],noseY:-.008,mouthY:-.118,mouthW:.120,neck:[1.18,1.04,1.14],hair:0x171412},
-  wojak:{skull:[1.02,1.08,.93],skullPos:[0,.010,0],jaw:[.150,.054,.72],chin:[.080,.044,.74],cheekX:.112,cheekY:-.044,cheekScale:[.98,.58,.52],browY:.102,eyeX:.082,eyeY:.038,nose:[.025,.074,.68],noseY:-.018,mouthY:-.118,mouthW:.098,neck:[.97,.96,.98],hair:null},
-  agarthan:{skull:[.94,1.14,.92],skullPos:[0,.016,0],jaw:[.145,.052,.70],chin:[.076,.044,.74],cheekX:.112,cheekY:-.028,cheekScale:[1.00,.62,.50],browY:.118,eyeX:.094,eyeY:.060,nose:[.024,.088,.64],noseY:-.010,mouthY:-.116,mouthW:.094,neck:[.94,1.02,.96],hair:0xd7e1e3},
-  greek:{skull:[1.01,1.10,.97],skullPos:[0,.010,0],jaw:[.178,.070,.83],chin:[.102,.060,.86],cheekX:.122,cheekY:-.030,cheekScale:[1.12,.70,.60],browY:.116,eyeX:.090,eyeY:.052,nose:[.031,.098,.78],noseY:-.012,mouthY:-.120,mouthW:.108,neck:[1.08,1.00,1.08],hair:0xc8c2b7}
+  trump:{skull:[1.04,1.07,.94],skullPos:[0,.008,0],jaw:[.166,.060,.74],chin:[.092,.050,.80],cheekX:.120,cheekY:-.038,cheekScale:[1.08,.64,.54],browY:.108,eyeX:.090,eyeY:.044,nose:[.030,.090,.74],noseY:-.012,mouthY:-.116,mouthW:.108,hair:0xd7ad67},
+  netanyahu:{skull:[1.03,1.03,.96],skullPos:[0,.006,0],jaw:[.160,.058,.76],chin:[.086,.047,.78],cheekX:.116,cheekY:-.036,cheekScale:[1.03,.62,.54],browY:.110,eyeX:.089,eyeY:.047,nose:[.031,.080,.76],noseY:-.014,mouthY:-.114,mouthW:.101,hair:0xaaa7a3},
+  kirk:{skull:[1.10,1.00,.95],skullPos:[0,.002,0],jaw:[.173,.057,.78],chin:[.088,.046,.76],cheekX:.124,cheekY:-.034,cheekScale:[1.15,.66,.55],browY:.106,eyeX:.094,eyeY:.044,nose:[.029,.074,.72],noseY:-.013,mouthY:-.113,mouthW:.104,hair:0x3c2b23},
+  floyd:{skull:[.99,1.11,.94],skullPos:[0,.014,0],jaw:[.168,.068,.80],chin:[.096,.060,.84],cheekX:.118,cheekY:-.032,cheekScale:[1.02,.72,.58],browY:.115,eyeX:.088,eyeY:.052,nose:[.033,.102,.78],noseY:-.015,mouthY:-.124,mouthW:.111,hair:0x171412},
+  gigachad:{skull:[1.08,1.08,.97],skullPos:[0,.005,0],jaw:[.205,.080,.86],chin:[.120,.070,.90],cheekX:.132,cheekY:-.025,cheekScale:[1.22,.74,.62],browY:.116,eyeX:.098,eyeY:.054,nose:[.034,.090,.78],noseY:-.008,mouthY:-.118,mouthW:.120,hair:0x171412},
+  wojak:{skull:[1.02,1.08,.93],skullPos:[0,.010,0],jaw:[.150,.054,.72],chin:[.080,.044,.74],cheekX:.112,cheekY:-.044,cheekScale:[.98,.58,.52],browY:.102,eyeX:.082,eyeY:.038,nose:[.025,.074,.68],noseY:-.018,mouthY:-.118,mouthW:.098,hair:null},
+  agarthan:{skull:[.94,1.14,.92],skullPos:[0,.016,0],jaw:[.145,.052,.70],chin:[.076,.044,.74],cheekX:.112,cheekY:-.028,cheekScale:[1.00,.62,.50],browY:.118,eyeX:.094,eyeY:.060,nose:[.024,.088,.64],noseY:-.010,mouthY:-.116,mouthW:.094,hair:0xd7e1e3},
+  greek:{skull:[1.01,1.10,.97],skullPos:[0,.010,0],jaw:[.178,.070,.83],chin:[.102,.060,.86],cheekX:.122,cheekY:-.030,cheekScale:[1.12,.70,.60],browY:.116,eyeX:.090,eyeY:.052,nose:[.031,.098,.78],noseY:-.012,mouthY:-.120,mouthW:.108,hair:0xc8c2b7}
 };
 
-function rebuildSkull(f,s,skin){
-  const skull=f.skullMesh;if(!skull)return;
-  skull.geometry?.dispose?.();
-  skull.geometry=new THREE.SphereGeometry(.285,30,22);
-  skull.scale.set(...s.skull);skull.position.set(...s.skullPos);
-  if(skull.material!==skin){skin.color.copy?.(skull.material?.color??new THREE.Color(f.def.palette.skin));}
-}
+function rebuildSkull(f,s){const skull=f.skullMesh;if(!skull)return;skull.geometry?.dispose?.();skull.geometry=new THREE.SphereGeometry(.285,30,22);skull.scale.set(...s.skull);skull.position.set(...s.skullPos);}
+function faceMass(f,s,skin,rig){const h=f.head;jaw=add(h,new THREE.CapsuleGeometry(s.jaw[0],s.jaw[1],10,18),skin,[0,-.145,.010],[0,0,Math.PI/2],[1,.72,s.jaw[2]]);jaw.name='likeness-jaw';rig.jaw=jaw;add(h,new THREE.SphereGeometry(s.chin[0],16,12),skin,[0,-.213,.178],[0,0,0],[1,.72,s.chin[2]]);for(const sx of[-1,1])rig.cheeks.push(add(h,new THREE.SphereGeometry(.060,16,12),skin,[sx*s.cheekX,s.cheekY,.222],[0,0,0],[s.cheekScale[0],s.cheekScale[1],s.cheekScale[2]]));add(h,new THREE.CapsuleGeometry(s.nose[0],s.nose[1],8,14),skin,[0,s.noseY,.274],[Math.PI/2,0,0],[.82,1,s.nose[2]]);add(h,new THREE.SphereGeometry(s.nose[0]*1.04,12,10),skin,[0,s.noseY-.060,.296],[0,0,0],[.9,.72,.76]);rig.mouth=add(h,new THREE.BoxGeometry(s.mouthW,.012,.010),mat(f.def.id==='greek'?0xa19b92:f.def.id==='floyd'?0x4b312b:0x72483f,.78),[0,s.mouthY,.286]);}
+function eyesAndBrows(f,s,skin,rig){const h=f.head,id=f.def.id,stone=id==='greek',white=mat(stone?0xd8d2c7:0xe6e0d9,.48),iris=mat(id==='agarthan'?0xa7ffff:id==='floyd'?0x38261e:id==='gigachad'?0x373b3e:0x526779,.40),dark=mat(stone?0x8c877e:0x241b1a,.79);for(const sx of[-1,1]){const e=add(h,new THREE.SphereGeometry(.031,16,12),white,[sx*s.eyeX,s.eyeY,.278],[0,0,0],[1.30,.48,.38]),p=add(h,new THREE.SphereGeometry(.0105,12,9),iris,[sx*s.eyeX,s.eyeY,.300],[0,0,0],[1,.88,.38]),lid=add(h,new THREE.BoxGeometry(.082,.009,.010),skin,[sx*s.eyeX,s.eyeY+.028,.286],[0,0,sx*.04]),b=add(h,new THREE.BoxGeometry(.086,.013,.013),dark,[sx*s.eyeX,s.browY,.267],[0,0,sx*(id==='gigachad'?.11:id==='kirk'?.06:.035)]);rig.eyes.push(e);rig.pupils.push(p);rig.lids.push(lid);rig.brows.push(b);}}
+function hair(f,s){if(s.hair==null)return;const h=f.head,id=f.def.id,hair=mat(s.hair,.86);if(id==='trump'){add(h,new THREE.CapsuleGeometry(.062,.31,8,16),hair,[.015,.275,.010],[0,0,1.30],[1.52,.70,1.18]);add(h,new THREE.CapsuleGeometry(.052,.24,7,14),hair,[-.115,.244,-.006],[0,0,.94],[1.28,.68,1.05]);add(h,new THREE.CapsuleGeometry(.042,.18,7,12),hair,[.155,.225,-.020],[0,0,1.72],[1.12,.66,1.0]);}else if(id==='netanyahu'){add(h,new THREE.SphereGeometry(.294,22,14,0,Math.PI*2,0,Math.PI*.47),hair,[0,.115,-.020],[0,0,0],[1.00,.82,1.01]);for(const sx of[-1,1])add(h,new THREE.CapsuleGeometry(.035,.15,6,10),hair,[sx*.226,.105,-.015],[0,0,sx*.08],[.9,1.05,.8]);}else if(id==='kirk'){add(h,new THREE.SphereGeometry(.300,22,14,0,Math.PI*2,0,Math.PI*.48),hair,[0,.118,-.020],[0,0,0],[1.08,.76,1.02]);add(h,new THREE.CapsuleGeometry(.042,.19,6,12),hair,[.135,.220,.018],[0,0,-.82],[1.05,.72,1]);}else if(id==='floyd'){add(h,new THREE.SphereGeometry(.286,20,12,0,Math.PI*2,0,Math.PI*.31),hair,[0,.155,-.018],[0,0,0],[1,.74,1]);}else if(id==='gigachad'){add(h,new THREE.SphereGeometry(.294,22,14,0,Math.PI*2,0,Math.PI*.38),hair,[0,.145,-.030],[0,0,0],[1.04,.70,1.04]);}else if(id==='agarthan'){for(let i=-3;i<=3;i++)add(h,new THREE.CapsuleGeometry(.028,.34,5,10),hair,[i*.065,.100,-.145-Math.abs(i)*.006],[0,0,i*.07],[.9,1,.8]);}else if(id==='greek'){for(let i=0;i<11;i++){const a=i/11*Math.PI*2;add(h,new THREE.TorusGeometry(.034+(i%3)*.006,.013,7,12),hair,[Math.cos(a)*.18,.18+Math.sin(a*.5)*.07,Math.sin(a)*.15],[Math.PI/2,0,a]);}}}
+function beard(f,id){if(!['floyd','gigachad'].includes(id))return;const h=f.head,b=mat(id==='floyd'?0x211611:0x171310,.92);add(h,new THREE.CapsuleGeometry(id==='gigachad'?.145:.125,.060,8,14),b,[0,-.170,.018],[0,0,Math.PI/2],[1,.75,.76]);add(h,new THREE.BoxGeometry(id==='gigachad'?.176:.160,.024,.015),b,[0,-.108,.286]);for(const sx of[-1,1])add(h,new THREE.CapsuleGeometry(.027,.095,6,10),b,[sx*.115,-.095,.214],[0,0,sx*.30],[.85,1,.72]);}
 
-function faceMass(f,s,skin){
-  const h=f.head;
-  const jaw=add(h,new THREE.CapsuleGeometry(s.jaw[0],s.jaw[1],10,18),skin,[0,-.145,.010],[0,0,Math.PI/2],[1,.72,s.jaw[2]]);
-  jaw.name='likeness-jaw';
-  add(h,new THREE.SphereGeometry(s.chin[0],16,12),skin,[0,-.213,.178],[0,0,0],[1,.72,s.chin[2]]).name='likeness-chin';
-  for(const sx of[-1,1])add(h,new THREE.SphereGeometry(.060,16,12),skin,[sx*s.cheekX,s.cheekY,.222],[0,0,0],[s.cheekScale[0],s.cheekScale[1],s.cheekScale[2]]).name='likeness-cheek';
-  add(h,new THREE.CapsuleGeometry(s.nose[0],s.nose[1],8,14),skin,[0,s.noseY,.274],[Math.PI/2,0,0],[.82,1,s.nose[2]]).name='likeness-nose';
-  add(h,new THREE.SphereGeometry(s.nose[0]*1.04,12,10),skin,[0,s.noseY-.060,.296],[0,0,0],[.9,.72,.76]);
-  add(h,new THREE.BoxGeometry(s.mouthW,.012,.010),mat(f.def.id==='greek'?0xa19b92:f.def.id==='floyd'?0x4b312b:0x72483f,.78),[0,s.mouthY,.286]).name='likeness-mouth';
-}
-
-function eyesAndBrows(f,s,skin){
-  const h=f.head,id=f.def.id,stone=id==='greek';
-  const white=mat(stone?0xd8d2c7:0xe6e0d9,.48),iris=mat(id==='agarthan'?0xa7ffff:id==='floyd'?0x38261e:id==='gigachad'?0x373b3e:0x526779,.40),dark=mat(stone?0x8c877e:0x241b1a,.79);
-  for(const sx of[-1,1]){
-    const e=add(h,new THREE.SphereGeometry(.031,16,12),white,[sx*s.eyeX,s.eyeY,.278],[0,0,0],[1.30,.48,.38]);
-    const p=add(h,new THREE.SphereGeometry(.0105,12,9),iris,[sx*s.eyeX,s.eyeY,.300],[0,0,0],[1,.88,.38]);
-    add(h,new THREE.BoxGeometry(.082,.009,.010),skin,[sx*s.eyeX,s.eyeY+.028,.286],[0,0,sx*.04]);
-    add(h,new THREE.BoxGeometry(.086,.013,.013),dark,[sx*s.eyeX,s.browY,.267],[0,0,sx*(id==='gigachad'?.11:id==='kirk'?.06:.035)]);
-    if(f.faceRig){f.faceRig.eyes.push(e);f.faceRig.pupils.push(p);}
-  }
-}
-
-function hair(f,s){
-  if(s.hair==null)return;const h=f.head,id=f.def.id,hair=mat(s.hair,.86);
-  if(id==='trump'){
-    add(h,new THREE.CapsuleGeometry(.062,.31,8,16),hair,[.015,.275,.010],[0,0,1.30],[1.52,.70,1.18]);
-    add(h,new THREE.CapsuleGeometry(.052,.24,7,14),hair,[-.115,.244,-.006],[0,0,.94],[1.28,.68,1.05]);
-    add(h,new THREE.CapsuleGeometry(.042,.18,7,12),hair,[.155,.225,-.020],[0,0,1.72],[1.12,.66,1.0]);
-  }else if(id==='netanyahu'){
-    add(h,new THREE.SphereGeometry(.294,22,14,0,Math.PI*2,0,Math.PI*.47),hair,[0,.115,-.020],[0,0,0],[1.00,.82,1.01]);
-    for(const sx of[-1,1])add(h,new THREE.CapsuleGeometry(.035,.15,6,10),hair,[sx*.226,.105,-.015],[0,0,sx*.08],[.9,1.05,.8]);
-  }else if(id==='kirk'){
-    add(h,new THREE.SphereGeometry(.300,22,14,0,Math.PI*2,0,Math.PI*.48),hair,[0,.118,-.020],[0,0,0],[1.08,.76,1.02]);
-    add(h,new THREE.CapsuleGeometry(.042,.19,6,12),hair,[.135,.220,.018],[0,0,-.82],[1.05,.72,1]);
-  }else if(id==='floyd'){
-    add(h,new THREE.SphereGeometry(.286,20,12,0,Math.PI*2,0,Math.PI*.31),hair,[0,.155,-.018],[0,0,0],[1,.74,1]);
-  }else if(id==='gigachad'){
-    add(h,new THREE.SphereGeometry(.294,22,14,0,Math.PI*2,0,Math.PI*.38),hair,[0,.145,-.030],[0,0,0],[1.04,.70,1.04]);
-  }else if(id==='agarthan'){
-    for(let i=-3;i<=3;i++)add(h,new THREE.CapsuleGeometry(.028,.34,5,10),hair,[i*.065,.100,-.145-Math.abs(i)*.006],[0,0,(i*.07)],[.9,1,.8]);
-  }else if(id==='greek'){
-    for(let i=0;i<11;i++){const a=(i/11)*Math.PI*2;add(h,new THREE.TorusGeometry(.034+(i%3)*.006,.013,7,12),hair,[Math.cos(a)*.18,.18+Math.sin(a*.5)*.07,Math.sin(a)*.15],[Math.PI/2,0,a]);}
-  }
-}
-
-function beard(f,id){
-  if(!['floyd','gigachad'].includes(id))return;const h=f.head,b=mat(id==='floyd'?0x211611:0x171310,.92);
-  add(h,new THREE.CapsuleGeometry(id==='gigachad'?.145:.125,.060,8,14),b,[0,-.170,.018],[0,0,Math.PI/2],[1,.75,.76]);
-  add(h,new THREE.BoxGeometry(id==='gigachad'?.176:.160,.024,.015),b,[0,-.108,.286]);
-  for(const sx of[-1,1])add(h,new THREE.CapsuleGeometry(.027,.095,6,10),b,[sx*.115,-.095,.214],[0,0,sx*.30],[.85,1,.72]);
-}
-
-export function applyParametricLikeness(f){
-  if(!f?.head||f.parametricLikenessApplied)return;const s=SPECS[f.def.id];if(!s)return;
-  const stone=f.def.id==='greek',skin=mat(stone?0xd7d2c8:f.def.palette.skin,stone?.92:.59);
-  rebuildSkull(f,s,skin);
-  if(f.torso){f.torso.scale.x*=s.neck[0]>.1?1:1;}
-  faceMass(f,s,skin);eyesAndBrows(f,s,skin);hair(f,s);beard(f,f.def.id);
-  if(f.def.id==='gigachad'){for(const sx of[-1,1])add(f.head,new THREE.BoxGeometry(.105,.018,.016),mat(0x171310,.9),[sx*.083,-.090,.287],[0,0,sx*.06]);}
-  if(f.def.id==='agarthan'){const g=mat(0xbfffff,.24,.02);g.emissive=new THREE.Color(0x55ffff);g.emissiveIntensity=1.4;for(const sx of[-1,1])add(f.head,new THREE.TorusGeometry(.030,.0045,7,16),g,[sx*s.eyeX,s.eyeY,.304]);}
-  f.parametricLikenessApplied=true;
-}
+export function applyParametricLikeness(f){if(!f?.head||f.parametricLikenessApplied)return;const s=SPECS[f.def.id];if(!s)return;const stone=f.def.id==='greek',skin=mat(stone?0xd7d2c8:f.def.palette.skin,stone?.92:.59),rig={eyes:[],pupils:[],lids:[],brows:[],mouth:null,jaw:null,cheeks:[]};f.faceRig=rig;rebuildSkull(f,s);faceMass(f,s,skin,rig);eyesAndBrows(f,s,skin,rig);hair(f,s);beard(f,f.def.id);if(f.def.id==='gigachad')for(const sx of[-1,1])add(f.head,new THREE.BoxGeometry(.105,.018,.016),mat(0x171310,.9),[sx*.083,-.090,.287],[0,0,sx*.06]);if(f.def.id==='agarthan'){const g=mat(0xbfffff,.24,.02);g.emissive=new THREE.Color(0x55ffff);g.emissiveIntensity=1.4;for(const sx of[-1,1])add(f.head,new THREE.TorusGeometry(.030,.0045,7,16),g,[sx*s.eyeX,s.eyeY,.304]);}f.parametricLikenessApplied=true;}
