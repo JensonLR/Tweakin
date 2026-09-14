@@ -1,12 +1,14 @@
 import { THREE } from '../vendor/three.js';
 import { authoredAssetFor,hasAuthoredAsset } from '../data/characterAssets.js';
+import { validateCombatAnimations } from './AnimationContract.js';
 
 const GLTF_LOADER_URL='https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/loaders/GLTFLoader.js';
+const SKELETON_UTILS_URL='https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/utils/SkeletonUtils.js';
 const cache=new Map();
 
-async function loader(){
-  const {GLTFLoader}=await import(GLTF_LOADER_URL);
-  return new GLTFLoader();
+async function runtime(){
+  const [{GLTFLoader},SkeletonUtils]=await Promise.all([import(GLTF_LOADER_URL),import(SKELETON_UTILS_URL)]);
+  return {loader:new GLTFLoader(),SkeletonUtils};
 }
 
 function prepare(root,mobile=false){
@@ -15,7 +17,9 @@ function prepare(root,mobile=false){
       o.castShadow=!mobile;
       o.receiveShadow=true;
       const mats=Array.isArray(o.material)?o.material:[o.material];
-      for(const m of mats){
+      const clones=mats.map(m=>m?.clone?.()??m);
+      o.material=Array.isArray(o.material)?clones:clones[0];
+      for(const m of clones){
         if(!m)continue;
         if('envMapIntensity' in m)m.envMapIntensity=Math.max(.65,m.envMapIntensity||0);
         if('roughness' in m)m.roughness=Math.min(.92,Math.max(.18,m.roughness??.58));
@@ -40,26 +44,36 @@ function normalise(root,asset){
   return root;
 }
 
-export async function loadAuthoredCharacter(id,{mobile=false}={}){
+export async function loadAuthoredCharacter(id,{mobile=false,requireCombatReady=false}={}){
   const asset=authoredAssetFor(id);
   if(!hasAuthoredAsset(id))return null;
-  if(cache.has(id))return cloneCharacter(await cache.get(id),asset,mobile);
-  const promise=(async()=>{
-    const l=await loader();
-    const gltf=await l.loadAsync(asset.path);
-    return {scene:gltf.scene,animations:gltf.animations||[]};
-  })();
-  cache.set(id,promise);
-  try{return cloneCharacter(await promise,asset,mobile)}catch(err){cache.delete(id);console.warn(`[TWEAKIN] authored character failed: ${id}`,err);return null}
+  if(!cache.has(id)){
+    cache.set(id,(async()=>{
+      const {loader,SkeletonUtils}=await runtime();
+      const gltf=await loader.loadAsync(asset.path);
+      return {scene:gltf.scene,animations:gltf.animations||[],SkeletonUtils};
+    })());
+  }
+  try{
+    const source=await cache.get(id);
+    const validation=validateCombatAnimations(source.animations);
+    if(requireCombatReady&&!validation.ok){
+      console.warn(`[TWEAKIN] authored fighter ${id} rejected for combat. Missing clips: ${validation.missing.join(', ')}`);
+      return null;
+    }
+    return cloneCharacter(source,asset,mobile,validation);
+  }catch(err){
+    cache.delete(id);
+    console.warn(`[TWEAKIN] authored character failed: ${id}`,err);
+    return null;
+  }
 }
 
-function cloneCharacter(source,asset,mobile){
-  // SkeletonUtils will replace this shallow clone once all final roster GLBs use the common rig.
-  // For showcase/static inspection, cloned scene graphs are sufficient and avoid blocking asset adoption.
-  const root=source.scene.clone(true);
+function cloneCharacter(source,asset,mobile,validation){
+  const root=source.SkeletonUtils.clone(source.scene);
   normalise(root,asset);
   prepare(root,mobile);
-  return {root,animations:source.animations,asset};
+  return {root,animations:source.animations,asset,validation};
 }
 
 export function authoredCharacterStatus(id){
