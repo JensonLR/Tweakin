@@ -5,7 +5,9 @@ import { ExtraModes } from './ui/ExtraModes.js';
 import { HUDPortraits } from './ui/HUDPortraits.js';
 import { UXEnhancements } from './ui/UXEnhancements.js';
 import { SaveStore, DEFAULT_SETTINGS } from './persistence/SaveStore.js';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function boot() {
+    const started=performance.now();
     const host = document.querySelector('#render-host');
     const root = document.querySelector('#ui-root');
     if (!host || !root) throw new Error('TWEAKIN boot targets missing');
@@ -17,6 +19,10 @@ async function boot() {
     document.documentElement.classList.toggle('touch-device', isTouch);
     document.documentElement.classList.toggle('high-end-device', !lowMemory);
     const game = new Game(host, settings);
+    const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
+    let seen=false;try{seen=sessionStorage.getItem('tweakinBootSeen')==='1';sessionStorage.setItem('tweakinBootSeen','1')}catch{}
+    const minimum=reduced?160:(seen?520:1180),remain=minimum-(performance.now()-started);if(remain>0)await sleep(remain);
+    const bootShell=root.querySelector('.boot-shell');if(bootShell){bootShell.classList.add('boot-exit');await sleep(reduced?20:240)}
     const ui = new AppUI(root, game, store);
     await ui.init();
     window.__TWEAKIN_SHOWCASE__ = new UIShowcase(root, game);
