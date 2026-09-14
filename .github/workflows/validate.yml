@@ -27,7 +27,7 @@ jobs:
             index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css style-brand.css style-polish.css style-final.css style-ux.css sw.js manifest.webmanifest icon.svg \
             assets/tweakin-logo.webp assets/tweakin-hero.webp assets/characters/reference/quaternius-common-rig.glb assets/characters/reference/formal-rig-reference.glb assets/characters/reference/quaternius-human.glb vendor/three.js \
             ui/AppUI.js ui/UIShowcaseV2.js ui/AuthoredViewer.js ui/ExtraModes.js ui/CareerStory.js ui/HUDPortraits.js ui/UXEnhancements.js \
-            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/ImportedCombatVisual.js game/AuthoredCharacter.js game/AnimationContract.js game/FallbackMotion.js \
+            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/ImportedCombatVisual.js game/AuthoredCharacter.js game/AnimationContract.js game/FallbackMotion.js game/ParametricLikeness.js game/BodyLikeness.js \
             game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js \
             game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
             data/roster.js data/characterAssets.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js scripts/audit-character-assets.mjs
@@ -58,7 +58,7 @@ jobs:
           const sw=fs.readFileSync('sw.js','utf8'),match=sw.match(/const CORE=\[(.*?)\];/s);if(!match)throw new Error('CORE cache manifest missing');
           const refs=[...match[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           for(const r of local)if(!fs.existsSync(r))throw new Error(`Offline cache references missing file: ${r}`);
-          for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/ImportedCombatVisual.js','game/AuthoredCharacter.js','game/AnimationContract.js','game/FallbackMotion.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
+          for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/ImportedCombatVisual.js','game/AuthoredCharacter.js','game/AnimationContract.js','game/FallbackMotion.js','game/ParametricLikeness.js','game/BodyLikeness.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
           console.log(`HTML and offline cache validate ${local.length} local assets.`);
           NODE
 
@@ -87,7 +87,7 @@ jobs:
           const roster=read('data/roster.js'),arenas=read('data/arenas.js');
           for(const id of ['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'])if(!roster.includes(`id: '${id}'`)&&!roster.includes(`id:'${id}'`))throw new Error(`Roster fighter missing: ${id}`);
           const arenaCount=(arenas.match(/\bid:\s*'/g)||[]).length;if(arenaCount<12)throw new Error(`Expected at least 12 arenas, found ${arenaCount}`);
-          const main=read('main.js'),game=read('game/Game.js'),sig=read('game/SignatureFighter.js'),imported=read('game/ImportedCombatVisual.js'),authored=read('game/AuthoredCharacter.js'),contract=read('game/AnimationContract.js'),fallback=read('game/FallbackMotion.js'),elite=read('game/EliteFighter.js'),face=read('game/FacialAnimator.js'),hit=read('game/HitReaction.js'),lighting=read('game/CombatLighting.js'),post=read('game/PostFX.js'),fx=read('game/PresentationDirector.js'),ux=read('ui/UXEnhancements.js'),finalCss=read('style-final.css'),uxCss=read('style-ux.css');
+          const main=read('main.js'),game=read('game/Game.js'),sig=read('game/SignatureFighter.js'),imported=read('game/ImportedCombatVisual.js'),authored=read('game/AuthoredCharacter.js'),contract=read('game/AnimationContract.js'),fallback=read('game/FallbackMotion.js'),elite=read('game/EliteFighter.js'),likeness=read('game/ParametricLikeness.js'),body=read('game/BodyLikeness.js'),face=read('game/FacialAnimator.js'),hit=read('game/HitReaction.js'),lighting=read('game/CombatLighting.js'),post=read('game/PostFX.js'),fx=read('game/PresentationDirector.js'),ux=read('ui/UXEnhancements.js'),finalCss=read('style-final.css'),uxCss=read('style-ux.css');
           const checks=[
             [main.includes('UXEnhancements'),'Dynamic UX layer not bootstrapped'],
             [main.includes('HUDPortraits'),'HUD portraits not bootstrapped'],
@@ -98,9 +98,11 @@ jobs:
             [imported.includes('loadAuthoredCharacter')&&imported.includes('AnimationMixer'),'Authored GLB combat visual stack incomplete'],
             [authored.includes('SkeletonUtils.clone')&&authored.includes('validateCombatAnimations'),'Skeletal cloning/animation validation incomplete'],
             [contract.includes('REQUIRED_COMBAT_ANIMATIONS')&&contract.includes("'grapple'")&&contract.includes("'ko'"),'Combat animation contract incomplete'],
-            [fallback.includes('idleAndLocomotion')&&fallback.includes('grapple(p,side)'),'Fallback motion choreography incomplete'],
+            [fallback.includes('stanceAndLocomotion')&&fallback.includes('grapple(p,side,id)'),'Fallback motion choreography incomplete'],
             [sig.includes('FacialAnimator')&&sig.includes('HitReaction')&&sig.includes('victoryPose'),'Fallback signature animation stack incomplete'],
             [elite.includes('ComboChoreography')&&elite.includes('addAnatomyDetail'),'Fallback fighter detail stack incomplete'],
+            [elite.includes('applyParametricLikeness')&&likeness.includes('applyParametricLikeness'),'Parametric likeness pipeline not wired'],
+            [elite.includes('applyBodyLikeness')&&body.includes('applyBodyLikeness'),'Body likeness pipeline not wired'],
             [face.includes('nextBlink'),'Facial animation blink controller missing'],
             [hit.includes('class HitReaction'),'Hit reaction system missing'],
             [lighting.includes('DirectionalLight')&&lighting.includes('HemisphereLight'),'Readable cinematic lighting stack incomplete'],
@@ -111,5 +113,5 @@ jobs:
             [uxCss.includes('.matchup-strip')&&uxCss.includes('.result-metrics'),'Dynamic UX CSS incomplete']
           ];
           for(const [ok,msg] of checks)if(!ok)throw new Error(msg);
-          console.log(`Roster, ${arenaCount} arenas, authored-character gate, fallback motion, cinematic presentation, UX and combat stacks are wired.`);
+          console.log(`Roster, ${arenaCount} arenas, likeness, authored-character gate, fallback motion, cinematic presentation, UX and combat stacks are wired.`);
           NODE
