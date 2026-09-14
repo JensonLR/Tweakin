@@ -7,14 +7,14 @@ import { applySilhouetteFix } from './SilhouetteFix.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
 const clamp=x=>Math.max(0,Math.min(1,x));
-const freshMetrics=()=>({hits:0,damage:0,bestCombo:0,blocks:0,parries:0,evades:0,specials:0,weapons:0});
+const freshMetrics=()=>({damage:0,hits:0,heavyHits:0,specialHits:0,weaponHits:0,blocks:0,parries:0,evades:0,bestCombo:0,knockdowns:0,environmentHits:0,specials:0,weapons:0});
 
 export class SignatureFighter extends EliteFighter{
   constructor(def,slot){super(def,slot);applySilhouetteFix(this);addRigPolish(this);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);this.hitReaction=new HitReaction(this);this.comboChoreo=new ComboChoreography(this);this.finisherReaction=0;this.finisherStyle=0;this.finisherSource='';this.introPose=-1;}
   setIntroPose(progress=-1){this.introPose=progress<0?-1:clamp(progress)}
   setState(s,move=''){
     const startingAttack=s==='Attack'&&move&&this.state!=='Attack';
-    if(startingAttack&&move==='special'){this.specialIndex=(this.specialIndex+1)%Math.max(1,this.def.finishers?.length||1);this.metrics.specials++;}
+    if(startingAttack&&move==='special'){this.specialIndex=(this.specialIndex+1)%Math.max(1,this.def.finishers?.length||1);this.metrics.specials=(this.metrics.specials??0)+1;}
     else if(startingAttack)this.comboChoreo?.start(move);
     super.setState(s,move);
   }
@@ -22,8 +22,8 @@ export class SignatureFighter extends EliteFighter{
   triggerFinisherReaction(style=0,source=''){this.finisherReaction=1.18;this.finisherStyle=style||0;this.finisherSource=source||'';}
   currentFinisher(){const fs=this.def.finishers||[];return fs[this.specialIndex<0?0:this.specialIndex%Math.max(1,fs.length)]||fs[0]||{name:'Signature',power:36}}
   attackDamage(kind){if(kind==='special'){const f=this.currentFinisher();return f.power*(.8+this.def.stats.upperBody/320)}return super.attackDamage(kind)*this.comboChoreo.multiplier(kind)}
-  receiveHit(raw,kind,attacker,dirX,dirZ){const result=super.receiveHit(raw,kind,attacker,dirX,dirZ);if(result?.blocked)this.metrics.blocks++;else if(result?.damage>0){this.hitReaction?.trigger(kind,dirX,dirZ,result.damage);if(attacker&&attacker!==this){attacker.metrics??=freshMetrics();attacker.metrics.hits++;attacker.metrics.damage+=result.damage;attacker.metrics.bestCombo=Math.max(attacker.metrics.bestCombo,attacker.combo||0);if(kind==='weapon')attacker.metrics.weapons++;}}return result;}
-  tryDefense(kind,attacker){const r=super.tryDefense(kind,attacker);if(r?.parried)this.metrics.parries++;if(r?.evaded)this.metrics.evades++;return r}
+  receiveHit(raw,kind,attacker,dirX,dirZ){const result=super.receiveHit(raw,kind,attacker,dirX,dirZ);if(result?.damage>0&&!result?.blocked)this.hitReaction?.trigger(kind,dirX,dirZ,result.damage);return result;}
+  tryDefense(kind,attacker){return super.tryDefense(kind,attacker)}
   finisherVictimPose(){if(this.finisherReaction<=0)return;const p=1-Math.min(1,this.finisherReaction/1.18),b=bell(p),style=this.finisherStyle%2;if(style===0){this.torso.rotation.y+=Math.sin(p*Math.PI*1.35)*.72;this.torso.rotation.x-=b*.24;this.head.rotation.z+=Math.sin(p*Math.PI*2)*.18;this.leftArm.rotation.z-=b*.34;this.rightArm.rotation.z+=b*.34;this.group.position.y+=Math.sin(p*Math.PI)*.055;}else{this.torso.rotation.z+=Math.sin(p*Math.PI)*.34;this.torso.rotation.y-=Math.sin(p*Math.PI*1.6)*.48;this.head.rotation.x+=b*.17;this.leftLeg.rotation.x+=b*.36;this.rightLeg.rotation.x-=b*.26;this.group.position.y+=Math.sin(p*Math.PI)*.035;}if(p>.62){const q=(p-.62)/.38;this.group.rotation.z-=q*q*.32;}}
   entrancePose(){
     if(this.introPose<0)return;const p=this.introPose,b=bell(p),id=this.def.id,side=this.slot%2?1:-1;this.torso.rotation.y+=side*(1-p)*.28;this.head.rotation.y-=side*(1-p)*.14;
