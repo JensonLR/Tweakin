@@ -18,6 +18,7 @@ export function addArenaBeauty(arena){
   const dark=mat(0x08080a,.92,.02);for(let i=0;i<6;i++){const a=-1.0+i*.4,x=Math.sin(a)*s*1.10,z=Math.cos(a)*s*1.10,h=.65+(i%3)*.24;const crate=add(g,new THREE.BoxGeometry(.42+(i%2)*.18,h,.48),dark,[x,h*.5,z],[0,a*.12,0]);crate.userData.foreground=true;}
   const cable=mat(0x151519,.76,.35);for(let i=-2;i<=2;i++){const bar=add(g,new THREE.CylinderGeometry(.012,.012,s*1.28,6),cable,[i*s*.18,3.45,-s*.28],[Math.PI/2,0,.08*i]);bar.castShadow=false;}
   arena.beautyUpdate=(dt,t)=>{const pulse=.5+.5*Math.sin(t*.72);g.traverse(o=>{if(o.isMesh&&o.material?.emissiveIntensity>0)o.material.emissiveIntensity=.72+pulse*.28;});if(arena.beautySignGlow)arena.beautySignGlow.intensity=(arena.beautySignGlow.userData.baseIntensity??4.6)+pulse*(arena.beautySignGlow.userData.pulseIntensity??1.8);sign.material.opacity=.88+pulse*.08;};
+  const mobile=matchMedia('(pointer: coarse)').matches||navigator.maxTouchPoints>0||innerWidth<900;setArenaBeautyQuality(arena,mobile?'medium':'high',mobile);
 }
 export function setArenaBeautyQuality(arena,q='medium',mobile=false){if(!arena?.beautyLayer)return;const low=q==='low',medium=q==='medium';arena.beautyPuddles?.forEach((p,i)=>p.visible=!low&&(!mobile||!medium||i<2));arena.beautyLights?.forEach((l,i)=>{const keep=!low&&(!mobile||q==='high'||i===arena.beautyLights.length-1);l.visible=keep;if(l===arena.beautySignGlow){l.userData.baseIntensity=mobile?3.0:4.6;l.userData.pulseIntensity=mobile?.9:1.8;}});}
 export function updateArenaBeauty(arena,dt,t){arena?.beautyUpdate?.(dt,t)}
