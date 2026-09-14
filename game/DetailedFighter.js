@@ -11,21 +11,18 @@ export class DetailedFighter extends Fighter{
   }
   add(parent,geo,material,pos,rot,scale){const m=mesh(parent,geo,material,pos,rot,scale);this.detailMeshes.push(m);return m;}
   addIdentityLayer(){
-    const d=this.def,id=d.id,accent=mat(d.palette.accent,.48,.12),cloth=mat(d.palette.primary,.74,.02),secondary=mat(d.palette.secondary,.80,.01);
-    this.add(this.torso,new THREE.BoxGeometry(.70,.035,.030),accent,[0,.55,.335],[0,0,0],[1,.9,.7]);
-    if(['trump','netanyahu','kirk'].includes(id)){
-      this.add(this.torso,new THREE.BoxGeometry(.028,.34,.024),accent,[0,.15,.438]);
-    }else if(id==='floyd'){
-      this.add(this.torso,new THREE.TorusGeometry(.18,.018,7,22,Math.PI),mat(0x8c8f94,.30,.68),[0,.21,.38],[Math.PI/2,0,0]);
+    const d=this.def,id=d.id,cloth=mat(d.palette.primary,.78,.02),secondary=mat(d.palette.secondary,.82,.01);
+    if(id==='floyd'){
+      this.add(this.torso,new THREE.TorusGeometry(.135,.009,7,24,Math.PI),mat(0x8c8f94,.30,.68),[0,.22,.30],[Math.PI/2,0,0]);
     }else if(id==='gigachad'){
-      this.add(this.torso,new THREE.TorusGeometry(.38,.030,8,24,Math.PI),cloth,[0,.26,.17],[Math.PI/2,0,0],[1.10,.62,1]);
+      this.add(this.torso,new THREE.TorusGeometry(.25,.012,8,26,Math.PI),cloth,[0,.27,.13],[Math.PI/2,0,0],[1.08,.52,1]);
     }else if(id==='agarthan'){
-      const glow=mat(0x8ff6ef,.25,.10,0x43d9d2,1.1);for(let i=-1;i<=1;i++)this.add(this.torso,new THREE.CylinderGeometry(.006,.006,.34,6),glow,[i*.12,.14,.425]);
+      const glow=mat(0x8ff6ef,.25,.10,0x43d9d2,1.1);for(let i=-1;i<=1;i++)this.add(this.torso,new THREE.CylinderGeometry(.0035,.0035,.25,6),glow,[i*.075,.14,.315]);
     }else if(id==='greek'){
-      this.group.traverse(o=>{if(o.isMesh&&o.material?.color&&!o.material.transparent){o.material.roughness=Math.max(.84,o.material.roughness??.84);o.material.metalness=.01;}});this.add(this.torso,new THREE.BoxGeometry(.040,.48,.034),secondary,[.30,.08,.36],[0,0,-.22]);
+      this.group.traverse(o=>{if(o.isMesh&&o.material?.color&&!o.material.transparent){o.material.roughness=Math.max(.84,o.material.roughness??.84);o.material.metalness=.01;}});this.add(this.torso,new THREE.CapsuleGeometry(.008,.28,4,8),secondary,[.19,.08,.29],[0,0,-.20]);
     }
   }
-  addSurfaceLayer(){const panel=mat(this.def.palette.secondary,.86,.015);for(let i=0;i<2;i++)this.add(this.torso,new THREE.BoxGeometry(.14,.035,.018),panel,[0,.37-i*.115,.405]);}
+  addSurfaceLayer(){const panel=mat(this.def.palette.secondary,.88,.012);for(let i=0;i<2;i++)this.add(this.torso,new THREE.CapsuleGeometry(.006,.075,4,8),panel,[0,.34-i*.095,.315],[0,0,Math.PI/2],[1,.75,.65]);}
   stance(t){
     const styles=this.def.styles||[],bounce=Math.sin(t*6.2);
     if(styles.includes('Kickboxing')){this.leftArm.rotation.x=-1.02;this.rightArm.rotation.x=-1.15;this.leftFore.rotation.x=-.72;this.rightFore.rotation.x=-.62;this.leftLeg.rotation.x=bounce*.035;this.rightLeg.rotation.x=-bounce*.035;this.torso.rotation.x=.035;}
