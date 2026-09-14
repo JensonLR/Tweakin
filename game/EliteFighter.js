@@ -58,9 +58,14 @@ export class EliteFighter extends UltraFighter{
     }
   }
   animate(dt,input){
-    super.animate(dt,input);this.signatureAttack();this.comboChoreo?.apply();
-    if(this.evadeTime>0){const p=this.evadeTime/.26;this.torso.rotation.z+=(this.slot?-.18:.18)*Math.sin(p*Math.PI);this.head.rotation.z-=this.torso.rotation.z*.35}
-    if(this.parryWindow>0){this.leftFore.rotation.z-=.22;this.rightFore.rotation.z+=.22}
+    super.animate(dt,input);
+    const ownsMotion=!!this.fallbackMotion;
+    if(!ownsMotion){
+      this.signatureAttack();
+      this.comboChoreo?.apply();
+      if(this.evadeTime>0){const p=this.evadeTime/.26;this.torso.rotation.z+=(this.slot?-.18:.18)*Math.sin(p*Math.PI);this.head.rotation.z-=this.torso.rotation.z*.35}
+      if(this.parryWindow>0){this.leftFore.rotation.z-=.22;this.rightFore.rotation.z+=.22}
+    }
     if(this.weaponVisual&&this.state==='Attack'){const p=Math.min(1,this.stateTime/(this.attackType==='heavy'?.62:.34));this.weaponVisual.rotation.x=-Math.sin(p*Math.PI)*.24}
   }
   snapshot(){return{...super.snapshot(),heldWeapon:this.heldWeapon,combo:this.combo,comboClock:this.comboClock,parryWindow:this.parryWindow,evadeTime:this.evadeTime,signatureStep:this.signatureStep,comboChoreo:this.comboChoreo?.snapshot?.()}}
