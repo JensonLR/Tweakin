@@ -2,6 +2,7 @@ import { Game } from './game/Game.js';
 import { AppUI } from './ui/AppUI.js';
 import { UIShowcaseV2 } from './ui/UIShowcaseV2.js';
 import { ExtraModes } from './ui/ExtraModes.js';
+import { CareerStory } from './ui/CareerStory.js';
 import { HUDPortraits } from './ui/HUDPortraits.js';
 import { UXEnhancements } from './ui/UXEnhancements.js';
 import { SaveStore, DEFAULT_SETTINGS } from './persistence/SaveStore.js';
@@ -27,6 +28,7 @@ async function boot() {
     await ui.init();
     window.__TWEAKIN_SHOWCASE__ = new UIShowcaseV2(root, game);
     window.__TWEAKIN_EXTRA_MODES__ = new ExtraModes(ui);
+    window.__TWEAKIN_CAREER_STORY__ = new CareerStory(ui);
     window.__TWEAKIN_HUD_PORTRAITS__ = new HUDPortraits(root);
     window.__TWEAKIN_UX__ = new UXEnhancements(root, game);
 }
