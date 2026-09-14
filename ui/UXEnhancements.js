@@ -8,7 +8,11 @@ export class UXEnhancements{
   }
   schedule(){if(this.pending)return;this.pending=requestAnimationFrame(()=>{this.pending=0;this.enhance()})}
   enhance(){this.enhanceMenu();this.enhanceBattle();this.enhanceResult();this.enhancePause()}
-  enhanceMenu(){const stack=this.root.querySelector('.menu-stack');if(!stack||stack.querySelector('.menu-statusline'))return;const el=document.createElement('div');el.className='menu-statusline';el.innerHTML='<span>3D COMBAT</span><span>12 VENUES</span><span>CAREER</span><span>ONLINE P2P</span>';stack.insertBefore(el,stack.querySelector('.menu-btn'))}
+  enhanceMenu(){
+    const screen=this.root.querySelector('.menu-screen'),stack=this.root.querySelector('.menu-stack');if(!screen||!stack)return;
+    if(!screen.querySelector('.menu-keyart')){const art=document.createElement('div');art.className='menu-keyart';art.setAttribute('aria-hidden','true');screen.prepend(art)}
+    if(!stack.querySelector('.menu-statusline')){const el=document.createElement('div');el.className='menu-statusline';el.innerHTML='<span>3D COMBAT</span><span>12 VENUES</span><span>CAREER</span><span>ONLINE P2P</span>';stack.insertBefore(el,stack.querySelector('.menu-btn'))}
+  }
   selectedCard(grid){const a=this.root.querySelector(`${grid} .roster-card.active`);return a?.querySelector('h3')?.textContent?.trim()||'SELECT'}
   enhanceBattle(){
     const panel=this.root.querySelector('.setup-panel'),p1=this.root.querySelector('#p1-grid'),p2=this.root.querySelector('#p2-grid');if(!panel||!p1||!p2)return;let strip=this.root.querySelector('.matchup-strip');if(!strip){strip=document.createElement('div');strip.className='matchup-strip';panel.parentElement?.insertBefore(strip,panel)}
