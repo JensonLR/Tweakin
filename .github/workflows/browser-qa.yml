@@ -41,47 +41,68 @@ jobs:
           const { chromium } = require('playwright');
           const fs = require('fs');
           const assert = (v,m)=>{ if(!v) throw new Error(m); };
+          const report={mobile:null,desktop:null,browserErrors:[],stage:'boot'};
+          const write=()=>fs.writeFileSync('qa-artifacts/debug.json',JSON.stringify(report,null,2));
           (async()=>{
             const browser = await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
-            const browserErrors=[];
-            const mobile = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
-            const page = await mobile.newPage();
-            page.on('pageerror',e=>browserErrors.push(`mobile pageerror: ${e.message}`));
-            page.on('console',m=>{if(m.type()==='error')browserErrors.push(`mobile console: ${m.text()}`)});
-            await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
-            await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__,null,{timeout:30000});
-            assert(await page.locator('[data-nav="quick"]').isVisible(),'Quick Fight not visible on mobile');
-            assert(await page.locator('.brand-word').isVisible(),'Brand mark not visible on mobile');
-            await page.screenshot({path:'qa-artifacts/mobile-menu.png',fullPage:true});
-            await page.locator('[data-nav="quick"]').click();
-            await page.waitForFunction(()=>window.__TWEAKIN_GAME__?.match?.fighters?.length>=2,null,{timeout:15000});
-            await page.waitForTimeout(1700);
-            const mdbg=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
-            assert(mdbg.mode==='quick','Quick fight did not start');
-            assert(mdbg.fighters.length===2,'Expected two fighters');
-            assert(Number.isFinite(mdbg.fps)&&mdbg.fps>0,'FPS debug invalid');
-            await page.screenshot({path:'qa-artifacts/mobile-fight.png',fullPage:true});
-            await mobile.close();
+            try{
+              report.stage='mobile-menu';
+              const mobile = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+              const page = await mobile.newPage();
+              page.on('pageerror',e=>report.browserErrors.push(`mobile pageerror: ${e.message}`));
+              page.on('console',m=>{if(m.type()==='error')report.browserErrors.push(`mobile console: ${m.text()}`)});
+              await page.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
+              await page.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_DEBUG__,null,{timeout:30000});
+              assert(await page.locator('[data-nav="quick"]').isVisible(),'Quick Fight not visible on mobile');
+              assert(await page.locator('.brand-word').isVisible(),'Brand mark not visible on mobile');
+              await page.screenshot({path:'qa-artifacts/mobile-menu.png',fullPage:true});
 
-            const desktop = await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
-            const dpage = await desktop.newPage();
-            dpage.on('pageerror',e=>browserErrors.push(`desktop pageerror: ${e.message}`));
-            dpage.on('console',m=>{if(m.type()==='error')browserErrors.push(`desktop console: ${m.text()}`)});
-            await dpage.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
-            await dpage.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_SHOWCASE__,null,{timeout:30000});
-            await dpage.screenshot({path:'qa-artifacts/desktop-menu.png',fullPage:true});
-            await dpage.locator('[data-nav="roster"]').click();
-            await dpage.waitForTimeout(900);
-            assert(await dpage.locator('[data-fighter="trump"]').first().isVisible(),'Roster did not render');
-            await dpage.screenshot({path:'qa-artifacts/desktop-roster.png',fullPage:true});
-            const ddbg=await dpage.evaluate(()=>window.__TWEAKIN_DEBUG__);
-            const debugErrors=[...(mdbg.errors||[]),...(ddbg.errors||[])];
-            if(debugErrors.length) browserErrors.push(...debugErrors.map(x=>`runtime: ${x}`));
-            fs.writeFileSync('qa-artifacts/debug.json',JSON.stringify({mobile:mdbg,desktop:ddbg,browserErrors},null,2));
-            if(browserErrors.length) throw new Error(browserErrors.join('\n'));
-            await desktop.close();await browser.close();
-            console.log('Browser QA passed: mobile menu, mobile combat, desktop menu and fighter viewer.');
-          })().catch(e=>{console.error(e);process.exit(1)});
+              report.stage='mobile-portrait-combat';
+              await page.locator('[data-nav="quick"]').click();
+              await page.waitForFunction(()=>window.__TWEAKIN_GAME__?.match?.fighters?.length>=2,null,{timeout:15000});
+              await page.waitForTimeout(1750);
+              report.mobile=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
+              assert(report.mobile.mode==='quick','Quick fight did not start');
+              assert(report.mobile.fighters.length===2,'Expected two fighters');
+              assert(Number.isFinite(report.mobile.fps)&&report.mobile.fps>0,'FPS debug invalid');
+              assert(report.mobile.lighting?.active===true,'Combat lighting is not active');
+              await page.screenshot({path:'qa-artifacts/mobile-fight-portrait.png'});
+
+              report.stage='mobile-landscape-combat';
+              await page.setViewportSize({width:844,height:390});
+              await page.waitForTimeout(650);
+              await page.screenshot({path:'qa-artifacts/mobile-fight-landscape.png'});
+              await mobile.close();
+
+              report.stage='desktop-menu';
+              const desktop = await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
+              const dpage = await desktop.newPage();
+              dpage.on('pageerror',e=>report.browserErrors.push(`desktop pageerror: ${e.message}`));
+              dpage.on('console',m=>{if(m.type()==='error')report.browserErrors.push(`desktop console: ${m.text()}`)});
+              await dpage.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:45000});
+              await dpage.waitForFunction(()=>window.__TWEAKIN_GAME__&&window.__TWEAKIN_SHOWCASE__,null,{timeout:30000});
+              await dpage.screenshot({path:'qa-artifacts/desktop-menu.png'});
+
+              report.stage='desktop-roster';
+              await dpage.locator('[data-nav="roster"]').click();
+              await dpage.waitForTimeout(900);
+              assert(await dpage.locator('[data-rid="trump"]').isVisible(),'Roster did not render');
+              await dpage.locator('[data-rid="trump"]').click();
+              await dpage.waitForTimeout(450);
+              assert((await dpage.evaluate(()=>window.__TWEAKIN_SHOWCASE__?.lastId))==='trump','3D fighter viewer did not focus selected fighter');
+              await dpage.screenshot({path:'qa-artifacts/desktop-roster.png'});
+              report.desktop=await dpage.evaluate(()=>window.__TWEAKIN_DEBUG__);
+              const debugErrors=[...(report.mobile?.errors||[]),...(report.desktop?.errors||[])];
+              if(debugErrors.length)report.browserErrors.push(...debugErrors.map(x=>`runtime: ${x}`));
+              await desktop.close();
+              report.stage='complete';write();
+              if(report.browserErrors.length)throw new Error(report.browserErrors.join('\n'));
+              console.log('Browser QA passed: portrait mobile menu/combat, landscape combat, desktop menu and live fighter viewer.');
+            } finally {
+              write();
+              await browser.close();
+            }
+          })().catch(e=>{report.browserErrors.push(`fatal: ${e.message}`);write();console.error(e);process.exit(1)});
           NODE
 
       - name: Upload visual QA
