@@ -3,13 +3,14 @@ import { FacialAnimator } from './FacialAnimator.js';
 import { HitReaction } from './HitReaction.js';
 import { ComboChoreography } from './ComboChoreography.js';
 import { addRigPolish } from './RigPolish.js';
+import { applySilhouetteFix } from './SilhouetteFix.js';
 
 const bell=x=>Math.sin(Math.PI*Math.max(0,Math.min(1,x)));
 const clamp=x=>Math.max(0,Math.min(1,x));
 const freshMetrics=()=>({hits:0,damage:0,bestCombo:0,blocks:0,parries:0,evades:0,specials:0,weapons:0});
 
 export class SignatureFighter extends EliteFighter{
-  constructor(def,slot){super(def,slot);addRigPolish(this);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);this.hitReaction=new HitReaction(this);this.comboChoreo=new ComboChoreography(this);this.finisherReaction=0;this.finisherStyle=0;this.finisherSource='';this.introPose=-1;}
+  constructor(def,slot){super(def,slot);applySilhouetteFix(this);addRigPolish(this);this.specialIndex=-1;this.metrics=freshMetrics();this.facial=new FacialAnimator(this);this.hitReaction=new HitReaction(this);this.comboChoreo=new ComboChoreography(this);this.finisherReaction=0;this.finisherStyle=0;this.finisherSource='';this.introPose=-1;}
   setIntroPose(progress=-1){this.introPose=progress<0?-1:clamp(progress)}
   setState(s,move=''){
     const startingAttack=s==='Attack'&&move&&this.state!=='Attack';
