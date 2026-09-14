@@ -21,6 +21,7 @@ export class CinematicCombatMatch extends CombatMatch{
   }
   finish(winner){
     if(this.finished)return;this.finished=true;this.winner=winner;const loser=this.fighters.find(f=>f!==winner&&f.ko)||this.fighters.find(f=>f!==winner)||null;if(winner){winner.state='Victory';winner.stateTime=0;winner.momentum=100;}this.audio.win?.();this.postFinishElapsed=0;this.resultSent=false;clearTimeout(this.resultTimer);this.resultTimer=setTimeout(()=>this.sendResult(),Math.ceil((this.resultDelay+.35)*1000));
+    this.hooks.onKO?.(winner,loser,this);
     if(winner&&loser){this.cinematic=[winner,loser];this.cinematicTime=1.72;this.cameraShake=Math.max(this.cameraShake,.42);}
   }
   dispose(){clearTimeout(this.resultTimer);this.resultTimer=null;super.dispose();}
