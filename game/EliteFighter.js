@@ -4,6 +4,7 @@ import { addFaceDetail } from './FaceDetail.js';
 import { addCharacterDetail } from './CharacterDetail.js';
 import { addAnatomyDetail } from './AnatomyDetail.js';
 import { CombatWear } from './CombatWear.js';
+import { ComboChoreography } from './ComboChoreography.js';
 import { applyFighterSurface } from './SurfaceDetail.js';
 
 const DUR={light:.34,heavy:.62,grapple:.72,special:2.35};
@@ -13,11 +14,12 @@ export class EliteFighter extends UltraFighter{
   constructor(def,slot){
     super(def,slot);
     this.buffered='';this.bufferTime=0;this.prevBlock=false;this.parryWindow=0;this.evadeTime=0;this.evadeCooldown=0;this.invuln=0;this.justEvaded=false;this.signatureStep=0;
-    addFaceDetail(this);addCharacterDetail(this);addAnatomyDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);
+    addFaceDetail(this);addCharacterDetail(this);addAnatomyDetail(this);applyFighterSurface(this.group,this.def);this.combatWear=new CombatWear(this);this.comboChoreo=new ComboChoreography(this);
   }
-  setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting)this.signatureStep=(this.signatureStep+1)%4}
+  setState(s,move=''){const starting=s==='Attack'&&move&&this.state!=='Attack';super.setState(s,move);if(starting){this.signatureStep=(this.signatureStep+1)%4;this.comboChoreo?.start(move)}}
+  attackDamage(kind){return super.attackDamage(kind)*(this.comboChoreo?.multiplier(kind)??1)}
   update(dt,input,target,arena){
-    this.bufferTime=Math.max(0,this.bufferTime-dt);this.parryWindow=Math.max(0,this.parryWindow-dt);this.evadeTime=Math.max(0,this.evadeTime-dt);this.evadeCooldown=Math.max(0,this.evadeCooldown-dt);this.invuln=Math.max(0,this.invuln-dt);this.justEvaded=false;
+    this.comboChoreo?.update(dt);this.bufferTime=Math.max(0,this.bufferTime-dt);this.parryWindow=Math.max(0,this.parryWindow-dt);this.evadeTime=Math.max(0,this.evadeTime-dt);this.evadeCooldown=Math.max(0,this.evadeCooldown-dt);this.invuln=Math.max(0,this.invuln-dt);this.justEvaded=false;
     if(input.block&&!this.prevBlock&&this.canAct()){this.parryWindow=.14;this.momentum=Math.min(100,this.momentum+1)}this.prevBlock=!!input.block;
     if(this.state==='Attack'){const next=input.grapple?'grapple':input.heavy?'heavy':input.light?'light':'';if(next){this.buffered=next;this.bufferTime=.42}}
     if(this.state!=='Attack'&&this.buffered&&this.bufferTime>0&&this.canAct()){input={...input,[this.buffered]:true};this.buffered='';this.bufferTime=0}
@@ -54,11 +56,11 @@ export class EliteFighter extends UltraFighter{
     }
   }
   animate(dt,input){
-    super.animate(dt,input);this.signatureAttack();
+    super.animate(dt,input);this.signatureAttack();this.comboChoreo?.apply();
     if(this.evadeTime>0){const p=this.evadeTime/.26;this.torso.rotation.z+=(this.slot?-.18:.18)*Math.sin(p*Math.PI);this.head.rotation.z-=this.torso.rotation.z*.35}
     if(this.parryWindow>0){this.leftFore.rotation.z-=.22;this.rightFore.rotation.z+=.22}
     if(this.weaponVisual&&this.state==='Attack'){const p=Math.min(1,this.stateTime/(this.attackType==='heavy'?.62:.34));this.weaponVisual.rotation.x=-Math.sin(p*Math.PI)*.24}
   }
-  snapshot(){return{...super.snapshot(),heldWeapon:this.heldWeapon,combo:this.combo,comboClock:this.comboClock,parryWindow:this.parryWindow,evadeTime:this.evadeTime,signatureStep:this.signatureStep}}
-  applySnapshot(s){super.applySnapshot(s);this.combo=s.combo??this.combo;this.comboClock=s.comboClock??this.comboClock;this.parryWindow=s.parryWindow??0;this.evadeTime=s.evadeTime??0;this.signatureStep=s.signatureStep??this.signatureStep;if((s.heldWeapon??null)!==this.heldWeapon)this.setWeaponVisual(s.heldWeapon??null);this.combatWear?.update()}
+  snapshot(){return{...super.snapshot(),heldWeapon:this.heldWeapon,combo:this.combo,comboClock:this.comboClock,parryWindow:this.parryWindow,evadeTime:this.evadeTime,signatureStep:this.signatureStep,comboChoreo:this.comboChoreo?.snapshot?.()}}
+  applySnapshot(s){super.applySnapshot(s);this.combo=s.combo??this.combo;this.comboClock=s.comboClock??this.comboClock;this.parryWindow=s.parryWindow??0;this.evadeTime=s.evadeTime??0;this.signatureStep=s.signatureStep??this.signatureStep;this.comboChoreo?.applySnapshot?.(s.comboChoreo);if((s.heldWeapon??null)!==this.heldWeapon)this.setWeaponVisual(s.heldWeapon??null);this.combatWear?.update()}
 }
