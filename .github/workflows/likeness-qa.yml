@@ -28,12 +28,12 @@ jobs:
           python3 -m http.server 4174 --bind 127.0.0.1 > /tmp/tweakin-likeness-http.log 2>&1 &
           for i in {1..20}; do curl -fsS http://127.0.0.1:4174/ >/dev/null && exit 0; sleep .5; done
           cat /tmp/tweakin-likeness-http.log; exit 1
-      - name: Capture all procedural fighters
+      - name: Capture six-fighter roster
         run: |
           mkdir -p likeness-artifacts
           node <<'NODE'
           const { chromium } = require('playwright');
-          const ids=['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'];
+          const ids=['trump','netanyahu','kirk','floyd','wojak','gigachad'];
           (async()=>{
             const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
             const ctx=await browser.newContext({viewport:{width:900,height:900},deviceScaleFactor:1});
