@@ -1,0 +1,86 @@
+name: Likeness QA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  likeness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve game
+        run: |
+          python3 -m http.server 4174 --bind 127.0.0.1 > /tmp/tweakin-likeness-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:4174/ >/dev/null && exit 0; sleep .5; done
+          cat /tmp/tweakin-likeness-http.log; exit 1
+      - name: Capture all procedural fighters
+        run: |
+          mkdir -p likeness-artifacts
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const ids=['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'];
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+            const ctx=await browser.newContext({viewport:{width:900,height:900},deviceScaleFactor:1});
+            const page=await ctx.newPage();
+            await page.goto('http://127.0.0.1:4174/',{waitUntil:'networkidle',timeout:45000});
+            await page.waitForFunction(()=>window.__TWEAKIN_GAME__,null,{timeout:30000});
+            for(const id of ids){
+              await page.evaluate((fighterId)=>{
+                const g=window.__TWEAKIN_GAME__;
+                g.stop();
+                const opponent=fighterId==='wojak'?'trump':'wojak';
+                g.start({mode:'qa',matchType:'Training',arenaId:'iron-gym',fighters:[fighterId,opponent],humanSlots:[],aiDifficulty:0,roundSeconds:9999});
+                g.setPaused(true);
+                const [f,o]=g.match.fighters;
+                f.group.position.set(0,0,0);f.group.rotation.y=0;f.yaw=0;
+                if(o)o.group.visible=false;
+                g.match.arena.group.visible=false;
+                g.combatLighting?.update?.(0,g.camera);
+              },id);
+              await page.waitForTimeout(80);
+              await page.evaluate(()=>{
+                const g=window.__TWEAKIN_GAME__,f=g.match.fighters[0];
+                g.camera.position.set(0,1.82,4.25);g.camera.fov=28;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.48,0);
+                g.renderer.render(g.match.scene,g.camera);
+              });
+              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-full.png`});
+              await page.evaluate(()=>{
+                const g=window.__TWEAKIN_GAME__;
+                g.camera.position.set(0,2.05,1.72);g.camera.fov=24;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.98,0);
+                g.renderer.render(g.match.scene,g.camera);
+              });
+              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-face.png`});
+              await page.evaluate(()=>{
+                const g=window.__TWEAKIN_GAME__;
+                g.camera.position.set(1.35,2.02,1.65);g.camera.fov=25;g.camera.updateProjectionMatrix();g.camera.lookAt(0,1.95,0);
+                g.renderer.render(g.match.scene,g.camera);
+              });
+              await page.locator('#render-host canvas').screenshot({path:`likeness-artifacts/${id}-three-quarter.png`});
+            }
+            await ctx.close();await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Upload likeness QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweakin-likeness-qa
+          path: likeness-artifacts/
+          if-no-files-found: error
+          retention-days: 7
