@@ -27,8 +27,8 @@ jobs:
             index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css style-brand.css sw.js manifest.webmanifest icon.svg \
             assets/tweakin-logo.webp assets/tweakin-hero.webp \
             game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js \
-            game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js \
-            game/CharacterDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js \
+            game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js \
+            game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js \
             game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
             ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js ui/HUDPortraits.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js \
             data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js vendor/three.js
@@ -93,7 +93,7 @@ jobs:
           const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           const missing=local.filter(x=>!fs.existsSync(x));
           if(missing.length){console.error('Missing cached files:',missing);process.exit(1)}
-          for(const required of ['style-brand.css','ui/HUDPortraits.js','game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/HitReaction.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js','assets/tweakin-logo.webp','assets/tweakin-hero.webp']){
+          for(const required of ['style-brand.css','ui/HUDPortraits.js','game/SignatureFighter.js','game/FaceDetail.js','game/FacialAnimator.js','game/HitReaction.js','game/ComboChoreography.js','game/AnatomyDetail.js','game/CinematicCombatMatch.js','game/VenueArena.js','game/ArenaAtmosphere.js','game/CombatLighting.js','assets/tweakin-logo.webp','assets/tweakin-hero.webp']){
             if(!local.includes(required)){console.error('Required runtime missing from offline cache:',required);process.exit(1)}
           }
           console.log(`Offline cache manifest validates ${local.length} local assets.`);
@@ -117,9 +117,13 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const sig=fs.readFileSync('game/SignatureFighter.js','utf8');
+          const elite=fs.readFileSync('game/EliteFighter.js','utf8');
           const game=fs.readFileSync('game/Game.js','utf8');
           const face=fs.readFileSync('game/FacialAnimator.js','utf8');
           const hit=fs.readFileSync('game/HitReaction.js','utf8');
+          const combo=fs.readFileSync('game/ComboChoreography.js','utf8');
+          const anatomy=fs.readFileSync('game/AnatomyDetail.js','utf8');
+          const lighting=fs.readFileSync('game/CombatLighting.js','utf8');
           const menu=fs.readFileSync('game/MenuBackdrop.js','utf8');
           const hud=fs.readFileSync('ui/HUDPortraits.js','utf8');
           const main=fs.readFileSync('main.js','utf8');
@@ -129,8 +133,12 @@ jobs:
           if(!sig.includes('triggerFinisherReaction')) throw new Error('Finisher reaction choreography missing');
           if(!sig.includes('entrancePose')) throw new Error('Entrance choreography missing');
           if(!sig.includes('victoryPose')) throw new Error('Victory choreography missing');
+          if(!elite.includes('ComboChoreography')||!combo.includes('class ComboChoreography')) throw new Error('Combo choreography not wired');
+          if(!elite.includes('addAnatomyDetail')||!anatomy.includes('addAnatomyDetail')) throw new Error('Anatomy detail not wired');
           if(!game.includes('triggerSlowmo')) throw new Error('Impact slow motion missing');
           if(!game.includes('ArenaAtmosphere')) throw new Error('Arena atmosphere not wired');
+          if(!game.includes('CombatLighting')||!game.includes('combatLighting?.update')) throw new Error('Dynamic combat lighting not wired');
+          if(!lighting.includes('SpotLight')||!lighting.includes('camera.position')) throw new Error('Combat lighting director appears invalid');
           if(!game.includes('introTime')) throw new Error('Pre-fight camera sequence missing');
           if(!face.includes('nextBlink')) throw new Error('Facial blink controller missing');
           if(!hit.includes('class HitReaction')) throw new Error('Directional hit reactions missing');
@@ -138,5 +146,5 @@ jobs:
           if(!main.includes('HUDPortraits')) throw new Error('HUD portraits not bootstrapped');
           if(!hud.includes('data')) throw new Error('HUD portrait module appears invalid');
           if(!css.includes('tweakin-hero.webp')||!css.includes('data-portrait')) throw new Error('Official fighter artwork not wired to interface/HUD');
-          console.log('Presentation, combat, branding and HUD stacks are wired.');
+          console.log('Presentation, combat, lighting, branding and HUD stacks are wired.');
           NODE
