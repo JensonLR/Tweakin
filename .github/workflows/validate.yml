@@ -30,19 +30,19 @@ jobs:
             game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/ImportedCombatVisual.js game/AuthoredCharacter.js game/AnimationContract.js game/FallbackMotion.js \
             game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js \
             game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
-            data/roster.js data/characterAssets.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js
+            data/roster.js data/characterAssets.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js scripts/audit-character-assets.mjs
           do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
 
       - name: JavaScript syntax and import graph
         run: |
-          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+          find . -type f \( -name '*.js' -o -name '*.mjs' \) -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
           node - <<'NODE'
           const fs=require('fs'),path=require('path'),files=[];
-          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(['.git','node_modules'].includes(e.name))continue;const p=path.join(d,e.name);e.isDirectory()?walk(p):p.endsWith('.js')&&files.push(p)}} walk('.');
+          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(['.git','node_modules'].includes(e.name))continue;const p=path.join(d,e.name);e.isDirectory()?walk(p):(p.endsWith('.js')||p.endsWith('.mjs'))&&files.push(p)}} walk('.');
           let bad=false;const re=/(?:from\s+|import\s*)['\"](\.{1,2}\/[^'\"]+)['\"]/g;
-          for(const f of files){const src=fs.readFileSync(f,'utf8');for(const m of src.matchAll(re)){const r=path.resolve(path.dirname(f),m[1]);if(!fs.existsSync(r)){console.error(`Missing import: ${f} -> ${m[1]}`);bad=true}}}
+          for(const f of files){const src=fs.readFileSync(f,'utf8');for(const m of src.matchAll(re)){const raw=m[1],candidates=[path.resolve(path.dirname(f),raw),path.resolve(path.dirname(f),`${raw}.js`),path.resolve(path.dirname(f),`${raw}.mjs`)];if(!candidates.some(fs.existsSync)){console.error(`Missing import: ${f} -> ${raw}`);bad=true}}}
           if(bad)process.exit(1);console.log(`Validated ${files.length} JavaScript modules.`)
           NODE
 
@@ -61,6 +61,9 @@ jobs:
           for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/ImportedCombatVisual.js','game/AuthoredCharacter.js','game/AnimationContract.js','game/FallbackMotion.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
           console.log(`HTML and offline cache validate ${local.length} local assets.`);
           NODE
+
+      - name: Audit fighter GLBs
+        run: node scripts/audit-character-assets.mjs
 
       - name: Validate roster asset gate
         run: |
