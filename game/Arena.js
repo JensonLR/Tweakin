@@ -2,9 +2,9 @@ import { THREE } from '../vendor/three.js';
 import { seeded, hash } from '../core/math.js';
 
 export class Arena {
-  constructor(def){this.def=def;this.group=new THREE.Group();this.group.name=`arena-${def.id}`;this.weapons=[];this.props=[];this.breakables=[];this.fx=[];this.crowd=[];this.debris=[];this.crowdPulse=0;this.rng=seeded(hash(def.id));this.build()}
+  constructor(def){this.def=def;this.group=new THREE.Group();this.group.name=`arena-${def.id}`;this.weapons=[];this.props=[];this.breakables=[];this.fx=[];this.crowd=[];this.debris=[];this.crowdPulse=0;this.rng=seeded(hash(def.id));this.mobile=matchMedia('(pointer:coarse)').matches||navigator.maxTouchPoints>0||innerWidth<900;this.build()}
   mat(color,rough=.75,metal=.04){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal})}
-  mesh(g,m,pos,cast=false){const x=new THREE.Mesh(g,m);x.position.set(...pos);x.castShadow=cast;x.receiveShadow=true;this.group.add(x);this.props.push(x);return x}
+  mesh(g,m,pos,cast=false){const x=new THREE.Mesh(g,m);x.position.set(...pos);x.castShadow=cast&&!this.mobile;x.receiveShadow=true;this.group.add(x);this.props.push(x);return x}
   build(){
     const d=this.def,s=d.size;
     const floor=this.mesh(new THREE.PlaneGeometry(s,s,10,10),this.mat(d.floor,.93),[0,0,0]);floor.rotation.x=-Math.PI/2;
@@ -12,14 +12,14 @@ export class Arena {
     this.mesh(new THREE.BoxGeometry(s,.16,2.8),wallMat,[0,1.4,-s*.51]);
     const left=this.mesh(new THREE.BoxGeometry(.16,s,2.8),wallMat,[-s*.51,1.4,0]);left.rotation.x=Math.PI/2;
     const right=this.mesh(new THREE.BoxGeometry(.16,s,2.8),wallMat,[s*.51,1.4,0]);right.rotation.x=Math.PI/2;
-    const hemi=new THREE.HemisphereLight(0xd8d7cf,0x151316,.72);this.group.add(hemi);
-    const key=new THREE.SpotLight(d.lightA,95,28,Math.PI/5,.65,1.4);key.position.set(-s*.32,7,s*.22);key.castShadow=true;key.shadow.mapSize.set(512,512);this.group.add(key,key.target);key.target.position.set(0,0,0);
-    const fill=new THREE.PointLight(d.lightB,38,18,2);fill.position.set(s*.36,3.4,-s*.25);this.group.add(fill);
-    const rim=new THREE.PointLight(d.lightA,22,14,2);rim.position.set(-s*.35,2.2,-s*.32);this.group.add(rim);
+    const hemi=new THREE.HemisphereLight(0xd8d7cf,0x151316,this.mobile?.48:.62);this.group.add(hemi);
+    const key=new THREE.SpotLight(d.lightA,this.mobile?34:46,24,Math.PI/4.8,.72,1.5);key.position.set(-s*.32,6.5,s*.22);key.castShadow=!this.mobile;key.shadow.mapSize.set(this.mobile?256:512,this.mobile?256:512);key.shadow.bias=-.0007;this.group.add(key,key.target);key.target.position.set(0,.8,0);
+    const fill=new THREE.PointLight(d.lightB,this.mobile?12:18,16,2);fill.position.set(s*.36,3.1,-s*.25);this.group.add(fill);
+    const rim=new THREE.PointLight(d.lightA,this.mobile?8:12,12,2);rim.position.set(-s*.35,2.2,-s*.32);this.group.add(rim);
     this.addCrowd();this.addVenueProps();this.addWeapons();this.addHazardGeometry();
   }
   addCrowd(){
-    const d=this.def,s=d.size,n=Math.min(d.crowd,matchMedia('(pointer:coarse)').matches?20:40),geo=new THREE.CapsuleGeometry(.13,.55,3,5);
+    const d=this.def,s=d.size,n=Math.min(d.crowd,this.mobile?18:40),geo=new THREE.CapsuleGeometry(.13,.55,3,5);
     const shirts=[0x161418,0x242128,0x171d23,0x2b2020,0x23231d,0x111216];
     for(let i=0;i<n;i++){
       const side=i%3,t=(i/n-.5)*s*.9;let x=0,z=0,rot=0;if(side===0){x=t;z=-s*.47;rot=0}else if(side===1){x=-s*.47;z=t;rot=Math.PI/2}else{x=s*.47;z=t;rot=-Math.PI/2}
@@ -50,17 +50,17 @@ export class Arena {
     }
   }
   addWeapons(){
-    const s=this.def.size;this.def.weaponPool.forEach((kind,i)=>{const a=(i/Math.max(1,this.def.weaponPool.length))*Math.PI*2+.7,x=Math.cos(a)*s*.28,z=Math.sin(a)*s*.28,group=new THREE.Group();group.position.set(x,.08,z);let geo,mat;if(kind==='bottle'){geo=new THREE.CylinderGeometry(.05,.075,.4,7);mat=this.mat(0x456858,.3,.05)}else{geo=new THREE.CylinderGeometry(kind==='broom'?.025:.045,kind==='bat'?.07:.05,kind==='broom'?1.2:kind==='bat'?1:.8,8);mat=this.mat(kind==='pipe'?0x74787c:0x6a4728,.48,kind==='pipe'?.7:.03)}const mesh=new THREE.Mesh(geo,mat);mesh.rotation.z=Math.PI/2;mesh.castShadow=true;group.add(mesh);this.group.add(group);this.weapons.push({kind,group,available:true})})
+    const s=this.def.size;this.def.weaponPool.forEach((kind,i)=>{const a=(i/Math.max(1,this.def.weaponPool.length))*Math.PI*2+.7,x=Math.cos(a)*s*.28,z=Math.sin(a)*s*.28,group=new THREE.Group();group.position.set(x,.08,z);let geo,mat;if(kind==='bottle'){geo=new THREE.CylinderGeometry(.05,.075,.4,7);mat=this.mat(0x456858,.3,.05)}else{geo=new THREE.CylinderGeometry(kind==='broom'?.025:.045,kind==='bat'?.07:.05,kind==='broom'?1.2:kind==='bat'?1:.8,8);mat=this.mat(kind==='pipe'?0x74787c:0x6a4728,.48,kind==='pipe'?.7:.03)}const mesh=new THREE.Mesh(geo,mat);mesh.rotation.z=Math.PI/2;mesh.castShadow=!this.mobile;group.add(mesh);this.group.add(group);this.weapons.push({kind,group,available:true})})
   }
-  addHazardGeometry(){const d=this.def,s=d.size;if(d.hazard==='fire'){for(let i=-4;i<=4;i++){const l=new THREE.PointLight(0xff5f19,3,2.8,2);l.position.set(i*1.1,.35,-s*.42);this.group.add(l);this.fx.push(l)}}if(d.hazard==='subway'){const tunnel=this.mesh(new THREE.BoxGeometry(s*.9,.05,1.8),this.mat(0x161617,.95),[0,-.03,s*.25]);tunnel.receiveShadow=true}}
+  addHazardGeometry(){const d=this.def,s=d.size;if(d.hazard==='fire'){for(let i=-4;i<=4;i++){const l=new THREE.PointLight(0xff5f19,this.mobile?1.4:2.4,2.8,2);l.position.set(i*1.1,.35,-s*.42);this.group.add(l);this.fx.push(l)}}if(d.hazard==='subway'){const tunnel=this.mesh(new THREE.BoxGeometry(s*.9,.05,1.8),this.mat(0x161617,.95),[0,-.03,s*.25]);tunnel.receiveShadow=true}}
   react(power=.5){this.crowdPulse=Math.min(1.4,Math.max(this.crowdPulse,power));}
   spawnDebris(b){
-    const glass=b.type==='glass',n=matchMedia('(pointer:coarse)').matches?(glass?5:4):(glass?12:8),base=b.mesh.position,mat=glass?new THREE.MeshPhysicalMaterial({color:0xb4dce6,transparent:true,opacity:.48,roughness:.12,metalness:.02,transmission:.12}):this.mat(0x5a5148,.8,.12);
+    const glass=b.type==='glass',n=this.mobile?(glass?5:4):(glass?12:8),base=b.mesh.position,mat=glass?new THREE.MeshPhysicalMaterial({color:0xb4dce6,transparent:true,opacity:.48,roughness:.12,metalness:.02,transmission:.12}):this.mat(0x5a5148,.8,.12);
     for(let i=0;i<n;i++){const geo=glass?new THREE.TetrahedronGeometry(.055+this.rng()*.08):new THREE.BoxGeometry(.06+this.rng()*.08,.05+this.rng()*.09,.04+this.rng()*.07),m=new THREE.Mesh(geo,mat.clone());m.position.set(base.x+(this.rng()-.5)*.5,Math.max(.16,base.y+(this.rng()-.5)*.7),base.z+(this.rng()-.5)*.16);m.userData.v=new THREE.Vector3((this.rng()-.5)*3.5,1.2+this.rng()*3,(this.rng()-.5)*2.5);m.userData.spin=new THREE.Vector3(this.rng()*5,this.rng()*5,this.rng()*5);m.userData.life=1.1+this.rng()*.8;this.group.add(m);this.debris.push(m)}
   }
   update(dt,time=0){
     for(const w of this.weapons)if(w.available){w.group.rotation.y+=dt*.7;w.group.position.y=.08+Math.sin(time*2+w.group.position.x)*.025}
-    if(this.def.hazard==='fire'){for(const x of this.fx)if(x.isLight)x.intensity=2.2+Math.random()*2}
+    if(this.def.hazard==='fire'){for(const x of this.fx)if(x.isLight)x.intensity=(this.mobile?1.15:1.8)+Math.random()*(this.mobile?1.0:1.8)}
     this.crowdPulse=Math.max(0,this.crowdPulse-dt*1.5);for(const p of this.crowd){const bob=Math.sin(time*(2.3+p.userData.energy*2)+p.userData.phase)*.025,cheer=Math.abs(Math.sin(time*8+p.userData.phase))*this.crowdPulse*.13*p.userData.energy;p.position.y=p.userData.baseY+bob+cheer;p.rotation.y=Math.sin(time*.9+p.userData.phase)*.05*this.crowdPulse;}
     for(let i=this.debris.length-1;i>=0;i--){const m=this.debris[i];m.userData.life-=dt;m.position.addScaledVector(m.userData.v,dt);m.userData.v.y-=6.5*dt;m.rotation.x+=m.userData.spin.x*dt;m.rotation.y+=m.userData.spin.y*dt;m.rotation.z+=m.userData.spin.z*dt;if(m.position.y<.04){m.position.y=.04;m.userData.v.y*=-.22;m.userData.v.x*=.75;m.userData.v.z*=.75}if(m.userData.life<=0){this.group.remove(m);m.geometry.dispose();m.material.dispose();this.debris.splice(i,1)}}
   }
