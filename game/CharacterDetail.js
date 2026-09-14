@@ -12,7 +12,6 @@ export function addCharacterDetail(f){
   if(!f?.torso||!f?.head||f.characterDetailAdded)return;
   const d=f.def,id=d.id;
   const skin=phys(d.palette.skin,id==='greek'?.9:.58),cloth=std(d.palette.primary,.74,.02),cloth2=std(d.palette.secondary,.68,.025),accent=std(d.palette.accent,.48,.15),dark=std(0x111114,.86,.01),metal=std(0x8e9498,.31,.72);
-  // Geometry here is identity-only. RigPolish/AnatomyDetail own body continuity so this layer never duplicates joints, knees or shoes.
   if(['trump','netanyahu','kirk'].includes(id)){
     const shirt=std(0xe7e3dc,.78,.01);shirtFront(f,shirt,accent);lapels(f,cloth);add(f.torso,new THREE.BoxGeometry(.80,.045,.045),cloth,[0,.57,.34]);
   }
@@ -29,8 +28,8 @@ export function addCharacterDetail(f){
   }else if(id==='floyd'){
     add(f.torso,new THREE.BoxGeometry(.80,.075,.05),cloth2,[0,.38,.34]);const hair=std(0x171411,.92);add(f.head,new THREE.SphereGeometry(.30,14,10,0,Math.PI*2,0,Math.PI*.30),hair,[0,.14,-.015]);necklace(f,metal);
   }else if(id==='gigachad'){
-    // Silhouette cue only: a wider upper torso. FaceDetail owns the entire head/jaw so there is no competing box geometry.
-    add(f.torso,new THREE.CapsuleGeometry(.44,.40,7,12),std(0x151619,.78),[0,.12,-.015],[0,0,0],[1.10,.88,.68]);add(f.torso,new THREE.CylinderGeometry(.17,.205,.24,12),skin,[0,.77,0]);
+    // Identity-only layer: the base rig owns the body silhouette and FaceDetail owns the head.
+    const contour=std(0x242529,.72,.04);add(f.torso,new THREE.TorusGeometry(.31,.018,8,22,Math.PI),contour,[0,.31,.18],[Math.PI/2,0,0],[1.12,.64,1]);
   }else if(id==='agarthan'){
     const pale=std(0xc9d5d7,.35,.42),glow=std(0x8ff6ef,.25,.1);glow.emissive=new THREE.Color(0x43d9d2);glow.emissiveIntensity=.9;add(f.torso,new THREE.BoxGeometry(.54,.46,.045),pale,[0,.15,.40],[0,0,0],[1,.94,1]);for(let i=-2;i<=2;i++)add(f.torso,new THREE.CylinderGeometry(.007,.007,.40,6),glow,[i*.098,.15,.432]);for(const sx of[-1,1])add(f.torso,new THREE.TorusGeometry(.145,.015,7,20,Math.PI*.7),pale,[sx*.27,.39,.35],[Math.PI/2,0,sx*.32]);
   }else if(id==='greek'){
