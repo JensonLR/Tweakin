@@ -60,18 +60,29 @@ jobs:
               report.stage='mobile-portrait-combat';
               await page.locator('[data-nav="quick"]').click();
               await page.waitForFunction(()=>window.__TWEAKIN_GAME__?.match?.fighters?.length>=2,null,{timeout:15000});
-              await page.waitForTimeout(1750);
+              await page.waitForFunction(()=>window.__TWEAKIN_DEBUG__?.frame>15,null,{timeout:30000});
+              assert(await page.locator('.mobile-touch').isVisible(),'Touch controls are hidden on mobile');
+              assert(await page.locator('[data-touch="light"]').isVisible(),'Light attack touch button missing');
+              const beforeFrame=await page.evaluate(()=>window.__TWEAKIN_DEBUG__.frame);
+              await page.locator('[data-touch="light"]').dispatchEvent('pointerdown',{pointerId:1,pointerType:'touch',isPrimary:true});
+              await page.waitForTimeout(120);
+              await page.locator('[data-touch="light"]').dispatchEvent('pointerup',{pointerId:1,pointerType:'touch',isPrimary:true});
+              await page.waitForFunction(f=>window.__TWEAKIN_DEBUG__?.frame>f+4,beforeFrame,{timeout:10000});
               report.mobile=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
               assert(report.mobile.mode==='quick','Quick fight did not start');
               assert(report.mobile.fighters.length===2,'Expected two fighters');
+              assert(report.mobile.frame>15,'Combat simulation did not advance');
               assert(Number.isFinite(report.mobile.fps)&&report.mobile.fps>0,'FPS debug invalid');
               assert(report.mobile.lighting?.active===true,'Combat lighting is not active');
               await page.screenshot({path:'qa-artifacts/mobile-fight-portrait.png'});
 
               report.stage='mobile-landscape-combat';
               await page.setViewportSize({width:844,height:390});
-              await page.waitForTimeout(650);
+              const landscapeStart=await page.evaluate(()=>window.__TWEAKIN_DEBUG__.frame);
+              await page.waitForFunction(f=>window.__TWEAKIN_DEBUG__?.frame>f+8,landscapeStart,{timeout:15000});
+              assert(await page.locator('.mobile-touch').isVisible(),'Touch controls disappeared in landscape');
               await page.screenshot({path:'qa-artifacts/mobile-fight-landscape.png'});
+              report.mobileLandscape=await page.evaluate(()=>window.__TWEAKIN_DEBUG__);
               await mobile.close();
 
               report.stage='desktop-menu';
@@ -92,12 +103,12 @@ jobs:
               assert((await dpage.evaluate(()=>window.__TWEAKIN_SHOWCASE__?.lastId))==='trump','3D fighter viewer did not focus selected fighter');
               await dpage.screenshot({path:'qa-artifacts/desktop-roster.png'});
               report.desktop=await dpage.evaluate(()=>window.__TWEAKIN_DEBUG__);
-              const debugErrors=[...(report.mobile?.errors||[]),...(report.desktop?.errors||[])];
+              const debugErrors=[...(report.mobile?.errors||[]),...(report.mobileLandscape?.errors||[]),...(report.desktop?.errors||[])];
               if(debugErrors.length)report.browserErrors.push(...debugErrors.map(x=>`runtime: ${x}`));
               await desktop.close();
               report.stage='complete';write();
               if(report.browserErrors.length)throw new Error(report.browserErrors.join('\n'));
-              console.log('Browser QA passed: portrait mobile menu/combat, landscape combat, desktop menu and live fighter viewer.');
+              console.log('Browser QA passed: live mobile combat, touch input, portrait/landscape framing, desktop menu and fighter viewer.');
             } finally {
               write();
               await browser.close();
