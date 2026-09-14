@@ -1,0 +1,50 @@
+name: Convert authored roster sources
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source payloads
+        run: |
+          set -euo pipefail
+          for f in \
+            assets/character-sources/trump.glb \
+            assets/character-sources/netanyahu.blend.gz \
+            assets/character-sources/kirk.fbx \
+            assets/character-sources/floyd.fbx \
+            assets/character-sources/wojak.abc \
+            assets/character-sources/gigachad.rar
+          do
+            test -s "$f" || { echo "Missing authored source: $f"; exit 1; }
+          done
+      - name: Install conversion tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender unrar-free p7zip-full
+      - name: Convert six authored fighters to GLB
+        run: blender -b --python tools/convert_roster_assets.py
+      - name: Verify outputs
+        run: |
+          set -euo pipefail
+          for id in trump netanyahu kirk floyd wojak gigachad; do
+            f="assets/characters/$id/$id.glb"
+            test -s "$f"
+            test "$(stat -c%s "$f")" -gt 10000
+            head -c4 "$f" | grep -q 'glTF'
+          done
+      - name: Commit converted roster
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/characters
+          git diff --cached --quiet && exit 0
+          git commit -m 'Convert acquired authored roster assets to GLB'
+          git push
