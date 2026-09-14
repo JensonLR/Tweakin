@@ -25,12 +25,12 @@ jobs:
           set -e
           for f in \
             index.html main.js style.css style-premium.css style-cinematic.css style-enhancements.css style-extra.css style-brand.css style-polish.css style-final.css style-ux.css sw.js manifest.webmanifest icon.svg \
-            assets/tweakin-logo.webp assets/tweakin-hero.webp vendor/three.js \
-            ui/AppUI.js ui/UIShowcase.js ui/ExtraModes.js ui/HUDPortraits.js ui/UXEnhancements.js \
-            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js \
+            assets/tweakin-logo.webp assets/tweakin-hero.webp assets/characters/reference/quaternius-common-rig.glb assets/characters/reference/formal-rig-reference.glb assets/characters/reference/quaternius-human.glb vendor/three.js \
+            ui/AppUI.js ui/UIShowcaseV2.js ui/AuthoredViewer.js ui/ExtraModes.js ui/CareerStory.js ui/HUDPortraits.js ui/UXEnhancements.js \
+            game/Game.js game/CombatMatch.js game/CinematicCombatMatch.js game/Fighter.js game/DetailedFighter.js game/UltraFighter.js game/EliteFighter.js game/SignatureFighter.js game/ImportedCombatVisual.js \
             game/FaceDetail.js game/FacialAnimator.js game/HitReaction.js game/ComboChoreography.js game/CharacterDetail.js game/AnatomyDetail.js game/CombatWear.js \
             game/Arena.js game/DetailedArena.js game/UltraArena.js game/VenueArena.js game/ArenaAtmosphere.js game/CombatLighting.js game/SurfaceDetail.js game/PresentationDirector.js game/MenuBackdrop.js game/DOMFX.js game/PostFX.js game/PerformanceGovernor.js game/Input.js game/AI.js \
-            data/roster.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js
+            data/roster.js data/characterAssets.js data/arenas.js data/career.js core/types.js core/math.js core/combatRules.js audio/AudioEngine.js persistence/SaveStore.js multiplayer/NetSession.js
           do
             test -f "$f" || { echo "Missing required file: $f"; exit 1; }
           done
@@ -58,8 +58,8 @@ jobs:
           const sw=fs.readFileSync('sw.js','utf8'),match=sw.match(/const CORE=\[(.*?)\];/s);if(!match)throw new Error('CORE cache manifest missing');
           const refs=[...match[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);const local=refs.filter(x=>x.startsWith('./')&&x!=='./').map(x=>x.slice(2));
           for(const r of local)if(!fs.existsSync(r))throw new Error(`Offline cache references missing file: ${r}`);
-          for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
-          console.log(`HTML and offline cache validate ${local.length} local assets.`)
+          for(const r of [...requiredHtml,'ui/UXEnhancements.js','ui/HUDPortraits.js','game/CombatLighting.js','game/ImportedCombatVisual.js','game/PostFX.js','game/PresentationDirector.js','audio/AudioEngine.js'])if(!local.includes(r))throw new Error(`Production runtime missing from offline cache: ${r}`);
+          console.log(`HTML and offline cache validate ${local.length} local assets.`);
           NODE
 
       - name: Validate game content and presentation stack
@@ -70,12 +70,14 @@ jobs:
           const roster=read('data/roster.js'),arenas=read('data/arenas.js');
           for(const id of ['trump','netanyahu','kirk','floyd','wojak','gigachad','agarthan','greek'])if(!roster.includes(`id: '${id}'`)&&!roster.includes(`id:'${id}'`))throw new Error(`Roster fighter missing: ${id}`);
           const arenaCount=(arenas.match(/\bid:\s*'/g)||[]).length;if(arenaCount<12)throw new Error(`Expected at least 12 arenas, found ${arenaCount}`);
-          const main=read('main.js'),game=read('game/Game.js'),sig=read('game/SignatureFighter.js'),elite=read('game/EliteFighter.js'),face=read('game/FacialAnimator.js'),hit=read('game/HitReaction.js'),lighting=read('game/CombatLighting.js'),post=read('game/PostFX.js'),fx=read('game/PresentationDirector.js'),ux=read('ui/UXEnhancements.js'),finalCss=read('style-final.css'),uxCss=read('style-ux.css');
+          const main=read('main.js'),game=read('game/Game.js'),sig=read('game/SignatureFighter.js'),imported=read('game/ImportedCombatVisual.js'),elite=read('game/EliteFighter.js'),face=read('game/FacialAnimator.js'),hit=read('game/HitReaction.js'),lighting=read('game/CombatLighting.js'),post=read('game/PostFX.js'),fx=read('game/PresentationDirector.js'),ux=read('ui/UXEnhancements.js'),finalCss=read('style-final.css'),uxCss=read('style-ux.css');
           const checks=[
             [main.includes('UXEnhancements'),'Dynamic UX layer not bootstrapped'],
             [main.includes('HUDPortraits'),'HUD portraits not bootstrapped'],
             [game.includes('triggerSlowmo'),'Impact slow motion missing'],
             [game.includes('CombatLighting')&&game.includes('combatLighting?.update'),'Combat lighting not wired'],
+            [sig.includes('ImportedCombatVisual')&&sig.includes('importedVisual?.update'),'Imported combat character runtime not wired'],
+            [imported.includes('SkeletonUtils')&&imported.includes('AnimationMixer')&&imported.includes('formal-rig-reference.glb'),'Rigged GLB combat visual stack incomplete'],
             [sig.includes('FacialAnimator')&&sig.includes('HitReaction')&&sig.includes('victoryPose'),'Signature animation stack incomplete'],
             [elite.includes('ComboChoreography')&&elite.includes('addAnatomyDetail'),'Elite fighter detail stack incomplete'],
             [face.includes('nextBlink'),'Facial animation blink controller missing'],
@@ -88,5 +90,5 @@ jobs:
             [uxCss.includes('.matchup-strip')&&uxCss.includes('.result-metrics'),'Dynamic UX CSS incomplete']
           ];
           for(const [ok,msg] of checks)if(!ok)throw new Error(msg);
-          console.log(`Roster, ${arenaCount} arenas, cinematic presentation, UX and combat stacks are wired.`)
+          console.log(`Roster, ${arenaCount} arenas, rigged GLB combat visuals, cinematic presentation, UX and combat stacks are wired.`);
           NODE
