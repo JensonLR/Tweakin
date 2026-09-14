@@ -1,25 +1,43 @@
 import { EMPTY_INPUT } from '../core/types.js';
 import { clamp, seeded, hash } from '../core/math.js';
-export class FighterAI {
-  difficulty;nextThink=0;action={...EMPTY_INPUT};rng;strafe=1;pressure=0;
+
+export class FighterAI{
+  difficulty;nextThink=0;action={...EMPTY_INPUT};rng;strafe=1;pressure=0;combo=[];comboDelay=0;feint=0;
   constructor(difficulty=.6,seed='ai'){this.difficulty=clamp(difficulty,.05,1);this.rng=seeded(hash(seed));}
+  pulse(name){const a={...EMPTY_INPUT};a[name]=true;return a}
+  plan(styles,oppDanger,nearWall){
+    const r=this.rng();if(nearWall&&styles.includes('Wrestling')&&r<.5)return['grapple','heavy'];
+    if(styles.includes('Kickboxing')&&r<.38)return['light','heavy'];
+    if(styles.includes('Martial Arts')&&r<.42)return['light','light','heavy'];
+    if(styles.includes('Wrestling')&&r<.46)return['light','grapple'];
+    if(oppDanger&&r<.65)return['heavy','heavy'];return r<.52?['light','light']:['light','heavy'];
+  }
   update(dt,self,targets,arena){
-    this.nextThink-=dt;const live=targets.filter(t=>!t.ko&&t!==self);if(!live.length)return{...EMPTY_INPUT};const target=live.sort((a,b)=>dist(self,a)-dist(self,b))[0],d=dist(self,target);
-    this.pressure=clamp(this.pressure+dt*(d<1.6?.16:-.08),0,1);
+    this.nextThink-=dt;this.comboDelay=Math.max(0,this.comboDelay-dt);this.feint=Math.max(0,this.feint-dt);const live=targets.filter(t=>!t.ko&&t!==self);if(!live.length)return{...EMPTY_INPUT};const target=live.sort((a,b)=>dist(self,a)-dist(self,b))[0],d=dist(self,target);
+    this.pressure=clamp(this.pressure+dt*(d<1.6?.14:-.07),0,1);
+    if(this.combo.length&&this.comboDelay<=0&&self.canAct?.()&&self.state!=='Attack'&&d<1.5){const move=this.combo.shift();this.comboDelay=.16+(1-this.difficulty)*.08;return this.pulse(move)}
     if(this.nextThink<=0){
-      this.nextThink=.055+(1-this.difficulty)*.18+this.rng()*.07;this.action={...EMPTY_INPUT};const danger=self.danger(),oppDanger=target.danger(),nearWall=!!arena.environmentAnchor(target.group.position.x,target.group.position.z),styles=self.def.styles||[];
-      if(self.momentum>=100&&this.rng()<.58+.30*this.difficulty){this.action.taunt=true;return this.action}
-      if(target.state==='Attack'&&target.attackType&&d<1.75){
-        const read=.22+this.difficulty*.66,roll=this.rng();if(roll<read*.48){this.action.block=true;return this.action}if(roll<read*.74&&d<1.4){this.action.block=true;return this.action}if(roll<read){this.action.block=true;this.action.run=true;this.action.x=this.strafe;this.strafe*=-1;return this.action}
+      this.nextThink=.06+(1-this.difficulty)*.15+this.rng()*.08;this.action={...EMPTY_INPUT};const danger=self.danger(),oppDanger=target.danger(),nearWall=!!arena.environmentAnchor(target.group.position.x,target.group.position.z),styles=self.def.styles||[],read=.20+this.difficulty*.68;
+      if(self.momentum>=100&&this.rng()<.48+.34*this.difficulty){this.action.taunt=true;return this.action}
+      if(target.state==='Attack'&&target.attackType&&d<1.8){
+        const roll=this.rng();if(roll<read*.38){this.action.block=true;return this.action}
+        if(roll<read*.66){this.action.block=true;this.action.x=this.strafe;this.strafe*=-1;return this.action}
+        if(roll<read){this.action.y=.65;this.action.x=this.strafe*.7;this.action.run=true;this.strafe*=-1;return this.action}
       }
-      if(d>2.2){this.action.y=-1;this.action.x=(this.rng()-.5)*.42;this.action.run=d>4||this.pressure<.25}
-      else if(d<.68){
-        const r=this.rng();if(r<.18){this.action.y=.8;this.action.x=this.strafe}else if(styles.includes('Wrestling')&&r<.58)this.action.grapple=true;else if(r<.45+.28*this.difficulty)this.action.light=true;else this.action.block=true;
-      }else{
-        const r=this.rng(),aggression=.34+this.difficulty*.36;if(oppDanger&&r<aggression*.58)this.action.heavy=true;else if(nearWall&&r<aggression*.67)this.action.grapple=true;else if(styles.includes('Kickboxing')&&r<.35)this.action.heavy=true;else if(styles.includes('Martial Arts')&&r<.42)this.action.light=true;else if(styles.includes('Wrestling')&&r<.4)this.action.grapple=true;else if(r<.32)this.action.light=true;else if(r<.54)this.action.heavy=true;else if(r<.72)this.action.grapple=true;else{this.strafe*=-1;this.action.x=this.strafe;this.action.y=-.15}
+      const weapon=arena.nearestWeapon(self.group.position.x,self.group.position.z,3.1);if(!self.heldWeapon&&weapon&&this.rng()<.10+.28*this.difficulty&&d>1.15){const dx=weapon.group.position.x-self.group.position.x,dz=weapon.group.position.z-self.group.position.z,ang=Math.atan2(dx,dz)-self.yaw;this.action.x=Math.sin(ang);this.action.y=-Math.cos(ang);this.action.run=true;if(Math.hypot(dx,dz)<1.28)this.action.pickup=true;return this.action}
+      if(d>2.25){this.action.y=-1;this.action.x=(this.rng()-.5)*.5;this.action.run=d>3.8||this.pressure<.22}
+      else if(d<.62){const r=this.rng();if(r<.24){this.action.y=.8;this.action.x=this.strafe*.75}else if(styles.includes('Wrestling')&&r<.62)this.action.grapple=true;else if(r<.52+.22*this.difficulty)this.action.light=true;else this.action.block=true}
+      else{
+        const r=this.rng(),aggression=(self.def.aggression??.7)*.48+.18+this.difficulty*.22;
+        if(this.feint<=0&&r<.10+.08*this.difficulty){this.feint=.34;this.action.x=this.strafe*.65;this.action.y=.12;this.strafe*=-1;return this.action}
+        if(self.heldWeapon&&r<.52){this.action.heavy=true}
+        else if(oppDanger&&r<aggression*.52){this.action.heavy=true}
+        else if(nearWall&&styles.includes('Wrestling')&&r<aggression*.65){this.action.grapple=true}
+        else if(r<aggression){this.combo=this.plan(styles,oppDanger,nearWall);const first=this.combo.shift();this.action[first]=true;this.comboDelay=.18+(1-this.difficulty)*.08}
+        else{this.strafe*=-1;this.action.x=this.strafe*(.55+this.rng()*.35);this.action.y=(this.rng()-.5)*.28}
       }
-      if(danger&&this.rng()<.22+.22*this.difficulty){this.action.block=true;this.action.y=.48}
-      const weapon=arena.nearestWeapon(self.group.position.x,self.group.position.z);if(!self.heldWeapon&&weapon&&this.rng()<.18+.25*this.difficulty)this.action.pickup=true;if(self.heldWeapon&&d<1.55&&this.rng()<.52)this.action.heavy=true;
+      if(danger&&this.rng()<.20+.28*this.difficulty){this.combo.length=0;this.action={...EMPTY_INPUT,block:true,y:.42,x:this.strafe*.3}}
+      if(!self.heldWeapon&&weapon&&Math.hypot(weapon.group.position.x-self.group.position.x,weapon.group.position.z-self.group.position.z)<1.28&&this.rng()<.4)this.action.pickup=true;
     }
     return{...this.action};
   }
