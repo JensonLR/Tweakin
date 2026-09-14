@@ -1,6 +1,12 @@
 name: Convert authored roster sources
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/character-sources/**'
+      - 'tools/convert_roster_assets.py'
+      - '.github/workflows/convert-roster-assets.yml'
   workflow_dispatch:
 
 permissions:
