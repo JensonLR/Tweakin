@@ -16,7 +16,7 @@ export class FacialAnimator{
     if(r.mouth){const grimace=stun?.12:danger?.055:0;r.mouth.scale.x=1+(attack?.12:0)-(danger?.06:0)+(victory?.09:0);r.mouth.scale.y=1+grimace+(special?.08:0);r.mouth.rotation.x=stun?.15:special?.06:0;r.mouth.rotation.z+=victory?Math.sin(this.t*1.3)*.008:0;}
     if(target&&r.pupils?.length&&f.def.id!=='wojak'){
       const dx=target.group.position.x-f.group.position.x,dz=target.group.position.z-f.group.position.z,yaw=Math.atan2(dx,dz)-f.yaw,focus=special?.55:1,px=clamp(Math.sin(yaw)*.016*focus,-.016,.016),py=clamp((target.group.position.y-f.group.position.y)*.006,-.008,.008);
-      r.pupils.forEach((p,i)=>{const base=(i===0?-1:1)*(f.def.id==='gigachad'?.115:.105);p.position.x=base+px;p.position.y=(f.def.id==='gigachad'?.08:.065)+py;if(special)p.scale.setScalar(.92);else p.scale.lerp?.({x:1,y:1,z:1},0);});
+      r.pupils.forEach((p,i)=>{const base=(i===0?-1:1)*(f.def.id==='gigachad'?.115:.105);p.position.x=base+px;p.position.y=(f.def.id==='gigachad'?.08:.065)+py;p.scale.setScalar(special?.92:1);});
     }
     const breathe=Math.sin(this.t*1.7+f.slot)*.003;f.head.rotation.x+=breathe*(danger?2:1);if(stun)f.head.rotation.y+=Math.sin(this.t*26)*.025;if(block)f.head.rotation.x-=.02;if(victory)f.head.rotation.y+=Math.sin(this.t*.9)*.018;if(special)f.head.rotation.x-=.025;
   }
