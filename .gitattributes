@@ -1,0 +1,8 @@
+# Large authored source models live in Git LFS. Generated browser GLBs stay as normal Git files
+# unless a future converted asset exceeds GitHub's regular file-size limit.
+assets/character-sources/trump.glb filter=lfs diff=lfs merge=lfs -text
+assets/character-sources/netanyahu.blend.gz filter=lfs diff=lfs merge=lfs -text
+assets/character-sources/kirk.fbx filter=lfs diff=lfs merge=lfs -text
+assets/character-sources/floyd.fbx filter=lfs diff=lfs merge=lfs -text
+assets/character-sources/wojak.abc filter=lfs diff=lfs merge=lfs -text
+assets/character-sources/gigachad.rar filter=lfs diff=lfs merge=lfs -text
