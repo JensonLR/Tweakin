@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'assets/character-sources/**'
+      - '.gitattributes'
       - 'tools/convert_roster_assets.py'
       - '.github/workflows/convert-roster-assets.yml'
   workflow_dispatch:
@@ -22,6 +23,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Check authored source set
         id: sources
