@@ -12,32 +12,60 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: convert-roster-assets-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   convert:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source payloads
+
+      - name: Check authored source set
+        id: sources
+        shell: bash
         run: |
           set -euo pipefail
-          for f in \
-            assets/character-sources/trump.glb \
-            assets/character-sources/netanyahu.blend.gz \
-            assets/character-sources/kirk.fbx \
-            assets/character-sources/floyd.fbx \
-            assets/character-sources/wojak.abc \
+          expected=(
+            assets/character-sources/trump.glb
+            assets/character-sources/netanyahu.blend.gz
+            assets/character-sources/kirk.fbx
+            assets/character-sources/floyd.fbx
+            assets/character-sources/wojak.abc
             assets/character-sources/gigachad.rar
-          do
-            test -s "$f" || { echo "Missing authored source: $f"; exit 1; }
+          )
+
+          missing=()
+          for f in "${expected[@]}"; do
+            if [[ ! -s "$f" ]]; then
+              missing+=("$f")
+            fi
           done
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Authored roster conversion is waiting for the complete six-file source set."
+            printf 'Missing: %s\n' "${missing[@]}"
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "All six authored source payloads are present."
+
       - name: Install conversion tools
+        if: steps.sources.outputs.ready == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y blender unrar-free p7zip-full
+
       - name: Convert six authored fighters to GLB
+        if: steps.sources.outputs.ready == 'true'
         run: blender -b --python tools/convert_roster_assets.py
+
       - name: Verify outputs
+        if: steps.sources.outputs.ready == 'true'
         run: |
           set -euo pipefail
           for id in trump netanyahu kirk floyd wojak gigachad; do
@@ -46,7 +74,9 @@ jobs:
             test "$(stat -c%s "$f")" -gt 10000
             head -c4 "$f" | grep -q 'glTF'
           done
+
       - name: Commit converted roster
+        if: steps.sources.outputs.ready == 'true'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
